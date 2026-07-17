@@ -114,6 +114,10 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 #breathFill{height:100%;width:100%;background:#8fae94;transition:width .1s linear;}
 #holdBtn{appearance:none;width:120px;height:120px;border-radius:50%;border:2px solid #8a4038;background:rgba(20,8,8,.75);color:#d8d2c6;font-family:'Noto Serif SC',serif;font-size:15px;letter-spacing:.3em;touch-action:none;user-select:none;-webkit-user-select:none;}
 #holdBtn.held{background:rgba(60,16,14,.9);border-color:#c53a2e;color:#fff;transform:scale(.94);}
+.bgmpick{margin-top:18px;font-size:11px;letter-spacing:.12em;color:#6a655a;}
+.bgmpick span{cursor:pointer;border-bottom:1px dotted #4a463c;padding-bottom:2px;}
+.bgmpick span.loaded{color:#8fae94;border-color:#8fae94;}
+.bgmpick input{display:none;}
 .endtag{margin-top:10px;font-size:12px;letter-spacing:.4em;color:var(--blood);}
 @media (prefers-reduced-motion: reduce){*{animation:none !important;}}
 </style>
@@ -178,6 +182,7 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 走近发光的东西，会出现「调查」按钮。</div>
   <button class="btn" id="startBtn">进 入 校 园</button>
   <div class="endcoll" id="titleColl"></div>
+  <div class="bgmpick"><span id="bgmPickBtn">♪ 导入本地音乐作 BGM（仅本机播放，不会上传）</span><input type="file" id="bgmFile" accept="audio/*"></div>
 </div>
 
 <div class="screen" id="endTitle">
@@ -259,6 +264,7 @@ function tenseThump(){const a=ac();if(!a)return;
   g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.22);
   o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.25);}
 function stopDrone(){clearInterval(bgmInt);bgmInt=null;if(BGM)BGM.alive=false;BGM=null;
+  if(typeof customBGM!=='undefined'&&customBGM)try{customBGM.pause();}catch(e){}
   droneNodes.forEach(x=>{try{x.stop?x.stop():x.disconnect();}catch(e){}});droneNodes=[];}
 function sfxClick(){const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type='square';o.frequency.value=180;g.gain.setValueAtTime(.06,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.06);o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.07);}
 function sfxStep(vol=.4){const a=ac();if(!a)return;const s=a.createBufferSource();s.buffer=noiseBuf(.22);const f=a.createBiquadFilter();f.type='lowpass';f.frequency.value=280;const g=a.createGain();g.gain.setValueAtTime(vol,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.2);s.connect(f);f.connect(g);g.connect(a.destination);s.start();}
@@ -1002,8 +1008,19 @@ function loop(t){const dt=Math.min(0.05,(t-lastT)/1000||0.016);lastT=t;
 requestAnimationFrame(loop);
 
 /* ============ 开场 ============ */
+/* ---- 本地BGM（用户自选文件，仅本机播放，不上传） ---- */
+let customBGM=null;
+$('bgmPickBtn').onclick=()=>$('bgmFile').click();
+$('bgmFile').onchange=e=>{
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  if(customBGM){customBGM.pause();URL.revokeObjectURL(customBGM.src);}
+  customBGM=new Audio(URL.createObjectURL(f));
+  customBGM.loop=true;customBGM.volume=.32;
+  const btn=$('bgmPickBtn');btn.textContent='♪ 已载入：'+f.name+'（点击可更换）';btn.classList.add('loaded');};
 $('startBtn').onclick=()=>{
   ac();startDrone();sfxClick();
+  if(customBGM){customBGM.currentTime=0;customBGM.play().catch(()=>{});
+    if(BGM&&BGM.master)BGM.master.gain.value=.5;}
   document.body.classList.add('playing');
   const de=document.documentElement;
   (de.requestFullscreen?de.requestFullscreen():Promise.reject()).then(()=>{
