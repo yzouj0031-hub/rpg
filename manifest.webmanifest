@@ -1,0 +1,15 @@
+{
+  "name": "第十三阶",
+  "short_name": "第十三阶",
+  "description": "校园恐怖探索游戏：午夜的旧桥会多出一阶。不要数完。",
+  "start_url": ".",
+  "scope": ".",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#050807",
+  "theme_color": "#050807",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
