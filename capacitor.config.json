@@ -1,0 +1,12 @@
+{
+  "appId": "com.yzouj0031.di13jie",
+  "appName": "第十三阶",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#050807"
+  }
+}
