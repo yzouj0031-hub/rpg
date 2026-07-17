@@ -37,6 +37,17 @@ body{color:var(--bone);font-family:'Noto Sans SC',sans-serif;font-weight:300;use
 #fearfill{height:100%;width:0%;background:var(--blood);transition:width .8s;}
 #inv{position:fixed;z-index:8;top:calc(52px + env(safe-area-inset-top));left:16px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none;max-width:60vw;}
 .tag{font-size:10px;letter-spacing:.2em;color:var(--paper);border:1px solid #33301f;padding:2px 7px;background:rgba(20,18,10,.6);}
+#musicToggle{position:fixed;z-index:12;right:14px;top:calc(38px + env(safe-area-inset-top));display:none;align-items:center;gap:6px;
+  appearance:none;border:1px solid rgba(143,179,160,.28);border-radius:20px;background:rgba(5,8,7,.66);color:#77877f;
+  padding:6px 9px;font:300 10px/1 'Noto Sans SC',sans-serif;letter-spacing:.12em;touch-action:manipulation;}
+body.playing #musicToggle{display:flex;}
+#musicToggle:active{border-color:var(--phosphor);color:var(--phosphor);}
+#musicToggle.off{color:#505a55;border-color:#252d29;}
+#musicToggle .note{font:500 15px/1 serif;letter-spacing:0;}
+#trackToast{position:fixed;z-index:11;right:14px;top:calc(72px + env(safe-area-inset-top));max-width:44vw;
+  color:#7d8c84;font-size:9px;letter-spacing:.1em;text-align:right;opacity:0;transform:translateY(-3px);
+  transition:opacity .35s,transform .35s;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#trackToast.on{opacity:.78;transform:translateY(0);}
 
 /* 摇杆 */
 #stickZone{position:fixed;z-index:9;left:0;top:0;bottom:0;width:42%;}
@@ -133,6 +144,8 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
   <div id="fearbar"><div id="fearfill"></div></div>
 </div>
 <div id="inv"></div>
+<button id="musicToggle" type="button" aria-label="关闭配乐" aria-pressed="true"><span class="note" aria-hidden="true">♪</span><span id="musicState">配乐</span></button>
+<div id="trackToast" role="status" aria-live="polite"></div>
 
 <div id="stickZone"><div id="stick"><div id="knob"></div></div></div>
 <div id="lookZone"></div>
@@ -207,7 +220,87 @@ function ac(){
   }catch(err){audioUnavailable=true;console.warn('[audio] WebAudio unavailable; continuing silently.',err);return null;}
 }
 function noiseBuf(sec){const a=ac();if(!a)return null;const b=a.createBuffer(1,a.sampleRate*sec,a.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;return b;}
-/* ---- 自适应恐怖配乐（全合成，无音频文件） ---- */
+/* ---- 曲库配乐：单一播放器避免移动端同时解码多首长音频 ---- */
+const MUSIC_TRACKS={
+  explore:{src:'https://raw.githubusercontent.com/yzouj0031-hub/bgm/main/Death%20Note%20-%20Yoshihisa%20Hirano%20And%20Hideki%20Taniuchi%20-%20L%27s%20Theme%20B.mp3',volume:.24,label:"探索 · L's Theme B"},
+  danger:{src:'https://raw.githubusercontent.com/yzouj0031-hub/bgm/main/BLESSED%20MANE%20-%20Death%20Is%20No%20More.mp3',volume:.14,label:'追逐 · Death Is No More'},
+  bridge:{src:'https://raw.githubusercontent.com/yzouj0031-hub/bgm/main/Death%20Note%20-%20%28Kira%27s%20Theme%20A%29%20Music.mp3',volume:.22,label:"旧桥 · Kira's Theme A"},
+};
+const MUSIC={audio:null,key:null,sourceId:null,custom:null,customUrl:null,enabled:true,available:true,blocked:false,fadeToken:0,toastTimer:null};
+try{MUSIC.enabled=localStorage.getItem('d13_music')!=='off';}catch(err){}
+function selectedMusicTrack(key){return MUSIC.custom||MUSIC_TRACKS[key];}
+function selectedMusicId(key){return MUSIC.custom?'custom':key;}
+function ensureMusic(){
+  if(MUSIC.audio)return MUSIC.audio;
+  const m=new Audio();m.loop=true;m.preload='auto';m.playsInline=true;m.volume=0;
+  m.addEventListener('canplay',()=>{MUSIC.available=true;syncMusicButton();});
+  m.addEventListener('error',()=>{MUSIC.available=false;syncMusicButton();console.warn('[music] Track unavailable:',m.currentSrc||m.src);});
+  MUSIC.audio=m;return m;
+}
+function libraryMusicReady(){return !!MUSIC.sourceId&&MUSIC.available;}
+function syncMusicButton(){
+  const b=document.getElementById('musicToggle'),s=document.getElementById('musicState');if(!b||!s)return;
+  const active=MUSIC.enabled&&!MUSIC.blocked;
+  b.classList.toggle('off',!active);b.setAttribute('aria-pressed',String(active));
+  if(MUSIC.blocked){s.textContent='播放配乐';b.setAttribute('aria-label','播放配乐');}
+  else if(!MUSIC.available){s.textContent='配乐不可用';b.setAttribute('aria-label','配乐文件不可用');}
+  else{s.textContent=MUSIC.enabled?'配乐':'已静音';b.setAttribute('aria-label',MUSIC.enabled?'关闭配乐':'开启配乐');}
+}
+function announceTrack(track){
+  const t=document.getElementById('trackToast');if(!t)return;
+  clearTimeout(MUSIC.toastTimer);t.textContent='♫ '+track.label;t.classList.add('on');
+  MUSIC.toastTimer=setTimeout(()=>t.classList.remove('on'),2600);
+}
+function fadeMusicVolume(target,duration,done){
+  const m=MUSIC.audio;if(!m){if(done)done();return;}
+  const token=++MUSIC.fadeToken,from=m.volume,start=performance.now(),ms=Math.max(0,duration||0);
+  if(!ms){m.volume=target;if(done)done();return;}
+  const frame=now=>{if(token!==MUSIC.fadeToken)return;const p=Math.min(1,(now-start)/ms);
+    m.volume=from+(target-from)*(p*p*(3-2*p));
+    if(p<1)requestAnimationFrame(frame);else if(done)done();};
+  requestAnimationFrame(frame);
+}
+function resumeMusic(fadeMs=500){
+  const m=ensureMusic(),track=selectedMusicTrack(MUSIC.key);if(!track||!MUSIC.enabled)return;
+  MUSIC.available=true;
+  const p=m.play();
+  if(p&&p.then)p.then(()=>{MUSIC.blocked=false;fadeMusicVolume(track.volume,fadeMs);syncMusicButton();announceTrack(track);})
+    .catch(err=>{MUSIC.blocked=true;syncMusicButton();console.warn('[music] Playback needs a user gesture.',err);});
+}
+function playMusic(key,fadeMs=900){
+  const track=selectedMusicTrack(key),sourceId=selectedMusicId(key);if(!track)return;
+  const m=ensureMusic();
+  if(MUSIC.sourceId===sourceId){MUSIC.key=key;if(MUSIC.enabled&&m.paused)resumeMusic(fadeMs);return;}
+  const swap=()=>{m.pause();m.src=track.src;m.load();m.volume=0;MUSIC.key=key;MUSIC.sourceId=sourceId;MUSIC.available=true;
+    if(MUSIC.enabled)resumeMusic(Math.max(250,fadeMs/2));else syncMusicButton();};
+  if(!MUSIC.sourceId||m.paused||m.volume<.01)swap();else fadeMusicVolume(0,fadeMs/2,swap);
+}
+function stopMusic(fadeMs=500){
+  if(!MUSIC.audio)return;
+  fadeMusicVolume(0,fadeMs,()=>{if(MUSIC.audio)MUSIC.audio.pause();});
+}
+function handleMusicToggle(){
+  if(MUSIC.blocked){MUSIC.blocked=false;MUSIC.enabled=true;resumeMusic(300);return;}
+  MUSIC.enabled=!MUSIC.enabled;
+  try{localStorage.setItem('d13_music',MUSIC.enabled?'on':'off');}catch(err){}
+  if(MUSIC.enabled){if(MUSIC.key)resumeMusic(350);}else stopMusic(220);
+  syncMusicButton();
+}
+function selectCustomMusic(file){
+  if(!file)return;
+  if(MUSIC.audio){++MUSIC.fadeToken;MUSIC.audio.pause();MUSIC.audio.removeAttribute('src');MUSIC.audio.load();}
+  if(MUSIC.customUrl)URL.revokeObjectURL(MUSIC.customUrl);
+  MUSIC.customUrl=URL.createObjectURL(file);
+  MUSIC.custom={src:MUSIC.customUrl,volume:.32,label:'自选 · '+file.name};
+  MUSIC.sourceId=null;MUSIC.available=true;MUSIC.blocked=false;
+  const btn=document.getElementById('bgmPickBtn');
+  if(btn){btn.textContent='♪ 已载入：'+file.name+'（点击可更换）';btn.classList.add('loaded');}
+  if(document.body.classList.contains('playing')){
+    playMusic(MUSIC.key||'explore',350);
+    if(BGM&&BGM.master)BGM.master.gain.setTargetAtTime(.5,BGM.a.currentTime,.25);
+  }
+}
+/* ---- 自适应合成氛围（与曲库配乐叠加） ---- */
 let BGM=null,bgmInt=null;
 function startDrone(){const a=ac();if(!a)return;stopDrone();
   const master=a.createGain();master.gain.value=.9;master.connect(a.destination);
@@ -240,7 +333,7 @@ function bgmTick(){if(!BGM||!BGM.alive)return;
   BGM.pf.frequency.setTargetAtTime(420+fear*500+tense*700,t,1.2);
   BGM.dg.gain.setTargetAtTime(.035+tense*.02,t,.8);
   BGM.noteT-=.25;
-  if(BGM.noteT<=0&&!tense){BGM.noteT=7+Math.random()*13-fear*5;pianoNote(fear);}
+  if(BGM.noteT<=0&&!tense&&!libraryMusicReady()){BGM.noteT=7+Math.random()*13-fear*5;pianoNote(fear);}
   BGM.beatT-=.25;
   if(tense&&BGM.beatT<=0){BGM.beatT=Math.max(.28,.55-fear*.2);tenseThump();}}
 function pianoNote(fear){const a=ac();if(!a)return;
@@ -264,7 +357,6 @@ function tenseThump(){const a=ac();if(!a)return;
   g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.22);
   o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.25);}
 function stopDrone(){clearInterval(bgmInt);bgmInt=null;if(BGM)BGM.alive=false;BGM=null;
-  if(typeof customBGM!=='undefined'&&customBGM)try{customBGM.pause();}catch(e){}
   droneNodes.forEach(x=>{try{x.stop?x.stop():x.disconnect();}catch(e){}});droneNodes=[];}
 function sfxClick(){const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type='square';o.frequency.value=180;g.gain.setValueAtTime(.06,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.06);o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.07);}
 function sfxStep(vol=.4){const a=ac();if(!a)return;const s=a.createBufferSource();s.buffer=noiseBuf(.22);const f=a.createBiquadFilter();f.type='lowpass';f.frequency.value=280;const g=a.createGain();g.gain.setValueAtTime(vol,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.2);s.connect(f);f.connect(g);g.connect(a.destination);s.start();}
@@ -376,6 +468,7 @@ function exitAct(){
 function doorSequence(){
   closePanel();S.flags.chase=true;S.flags.doorSeq=true;S.doorHits=0;
   GHOST.on=true;GHOST.mode='chase';GHOST.x=9.2;GHOST.y=5.4;
+  playMusic('danger',600);
   sfxScream();addFear(14);if(navigator.vibrate)navigator.vibrate([80,50,80]);
   const ht=$('hint');ht.textContent='门锁住了！！狂点「撞 门」！！';ht.style.opacity=1;ht.style.color='#c53a2e';}
 function doorHit(){
@@ -383,13 +476,14 @@ function doorHit(){
   if(S.doorHits>=6){S.flags.doorSeq=false;const ht=$('hint');ht.style.opacity=0;escapeToBridge();}}
 
 /* ============ 追逐战 ============ */
-function startChase(){S.flags.chase=true;GHOST.on=true;GHOST.mode='chase';GHOST.x=18.3;GHOST.y=8.5;addFear(12);sfxScream();
+function startChase(){S.flags.chase=true;GHOST.on=true;GHOST.mode='chase';GHOST.x=18.3;GHOST.y=8.5;playMusic('danger',600);addFear(12);sfxScream();
   if(navigator.vibrate)navigator.vibrate([60,40,60]);}
 
 /* ============ 躲藏系统：储物柜 & 桌底 ============ */
 const HIDE={on:false,kind:null,phase:0,t:0,breath:1,hold:false,expose:0,gx:0,gy:0,lx:0,ly:0};
 function startHide(kind){
   HIDE.on=true;HIDE.kind=kind;HIDE.phase=0;HIDE.t=0;HIDE.breath=1;HIDE.hold=false;HIDE.expose=0;
+  playMusic('danger',500);
   move.x=0;move.y=0;
   if(kind==='locker'){P.x=18.55;P.y=6.5;P.a=Math.PI;$('slats').classList.add('on');
     HIDE.gx=17.7;HIDE.gy=6.5;HIDE.lx=18.2;HIDE.ly=9.2;}
@@ -407,6 +501,7 @@ function hideFail(){const key=HIDE.kind==='locker'?'found':'under';hideCleanup()
   GHOST.on=false;GHOST.mode='none';jumpscare(()=>endGame(key));}
 function hideEnd(){hideCleanup();
   GHOST.on=false;GHOST.mode='none';heart(S.fear>=60);addFear(10);
+  playMusic(HIDE.kind==='desk'?'explore':'danger',700);
   const ht=$('hint');ht.style.color='';
   if(HIDE.kind==='desk'){ht.textContent='脚步声远了。走廊……好像空了。';}
   else{ht.textContent='她走远了。快！趁现在去楼梯间的后门！';}
@@ -434,7 +529,7 @@ function hideUpdate(dt){
   }
   const bf=$('breathFill');bf.style.width=(HIDE.breath*100)+'%';
   bf.style.background=HIDE.breath<.3?'#c53a2e':(HIDE.expose>0.25?'#c9a13a':'#8fae94');}
-function escapeToBridge(){closePanel();GHOST.on=false;GHOST.mode='none';S.mode='bridge';$('rain').classList.add('on');sfxThunder();
+function escapeToBridge(){closePanel();GHOST.on=false;GHOST.mode='none';S.mode='bridge';playMusic('bridge',1000);$('rain').classList.add('on');sfxThunder();
   say(`你撞开后门，冲进雨里。\n身后的脚步声，在门口停住了。\n\n手电的光柱里全是雨。旧桥就在眼前，石头的，窄得只容一个人走。\n保安的话在你耳边响：<span class="em">桥只有十二阶。</span>`+(S.has.note?`\n纸条上写：<span class="paper">不要数完。</span>`:'')+`\n\n你没有别的路了。`,
     [{label:'踏上第一阶',cls:'danger',act:()=>{closePanel();startBridge();}}]);}
 
@@ -477,7 +572,7 @@ const ENDS={
  caught:{name:'走 廊',tag:'结局 · 被追上',dead:true,story:`声控灯是好的。\n只是从那晚起，三楼的灯会自己一盏一盏亮过去，\n再一盏一盏灭回来。\n像有两个人，一前一后，\n永远在走廊里追着跑。`},
  mad:{name:'天亮之前',tag:'结局 · 崩溃',dead:true,story:`他们在自习室找到你的时候，你缩在桌子底下，\n一直在小声数数。\n数到十二，就从头再数。\n谁问你话，你都只说一句：\n「不能数完。不能数完。」`},
 };
-function endGame(key){stopDrone();heart(false);GHOST.on=false;S.mode='end';
+function endGame(key){stopMusic(700);stopDrone();heart(false);GHOST.on=false;S.mode='end';
   const e=ENDS[key];$('endName').textContent=e.name;$('endTag').textContent=e.tag;$('endStory').textContent=e.story;
   try{
     const seen=JSON.parse(localStorage.getItem('d13_ends')||'[]');
@@ -559,6 +654,7 @@ function update(dt){
   /* 走廊封路事件：拿到纸条后第一次往东走 */
   if(!S.flags.deskEvent&&S.has.note&&GHOST.mode==='none'&&P.y<3.6&&P.x>7.2&&P.x<11.5){
     S.flags.deskEvent=true;GHOST.on=true;GHOST.mode='block';GHOST.x=13.6;GHOST.y=2.1;
+    playMusic('danger',500);
     sfxScream();addFear(16);if(navigator.vibrate)navigator.vibrate([90,60,90]);
     const ht=$('hint');ht.textContent='走廊尽头——是她！！回自习室，钻到桌子底下！！';
     ht.style.opacity=1;ht.style.color='#c53a2e';heart(true);
@@ -1009,18 +1105,14 @@ requestAnimationFrame(loop);
 
 /* ============ 开场 ============ */
 /* ---- 本地BGM（用户自选文件，仅本机播放，不上传） ---- */
-let customBGM=null;
 $('bgmPickBtn').onclick=()=>$('bgmFile').click();
 $('bgmFile').onchange=e=>{
   const f=e.target.files&&e.target.files[0];if(!f)return;
-  if(customBGM){customBGM.pause();URL.revokeObjectURL(customBGM.src);}
-  customBGM=new Audio(URL.createObjectURL(f));
-  customBGM.loop=true;customBGM.volume=.32;
-  const btn=$('bgmPickBtn');btn.textContent='♪ 已载入：'+f.name+'（点击可更换）';btn.classList.add('loaded');};
+  selectCustomMusic(f);};
+$('musicToggle').onclick=handleMusicToggle;syncMusicButton();
 $('startBtn').onclick=()=>{
-  ac();startDrone();sfxClick();
-  if(customBGM){customBGM.currentTime=0;customBGM.play().catch(()=>{});
-    if(BGM&&BGM.master)BGM.master.gain.value=.5;}
+  ac();playMusic('explore',700);startDrone();sfxClick();
+  if(BGM&&BGM.master)BGM.master.gain.value=MUSIC.custom ? .5 : .65;
   document.body.classList.add('playing');
   const de=document.documentElement;
   (de.requestFullscreen?de.requestFullscreen():Promise.reject()).then(()=>{
