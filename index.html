@@ -202,12 +202,64 @@ function ac(){
   }catch(err){audioUnavailable=true;console.warn('[audio] WebAudio unavailable; continuing silently.',err);return null;}
 }
 function noiseBuf(sec){const a=ac();if(!a)return null;const b=a.createBuffer(1,a.sampleRate*sec,a.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;return b;}
-function startDrone(){const a=ac();if(!a)return;stopDrone();const g=a.createGain();g.gain.value=.05;g.connect(a.destination);
-  const o=a.createOscillator();o.type='sine';o.frequency.value=48;const o2=a.createOscillator();o2.type='sine';o2.frequency.value=48.7;
-  const og=a.createGain();og.gain.value=.5;o.connect(og);o2.connect(og);og.connect(g);
-  const n=a.createBufferSource();n.buffer=noiseBuf(4);n.loop=true;const f=a.createBiquadFilter();f.type='lowpass';f.frequency.value=220;
-  const ng=a.createGain();ng.gain.value=.35;n.connect(f);f.connect(ng);ng.connect(g);o.start();o2.start();n.start();droneNodes=[o,o2,n,g];}
-function stopDrone(){droneNodes.forEach(x=>{try{x.stop?x.stop():x.disconnect();}catch(e){}});droneNodes=[];}
+/* ---- 自适应恐怖配乐（全合成，无音频文件） ---- */
+let BGM=null,bgmInt=null;
+function startDrone(){const a=ac();if(!a)return;stopDrone();
+  const master=a.createGain();master.gain.value=.9;master.connect(a.destination);
+  /* 1) 雨声层：滤波噪声 + 缓慢起伏 */
+  const rain=a.createBufferSource();rain.buffer=noiseBuf(4);rain.loop=true;
+  const rf=a.createBiquadFilter();rf.type='lowpass';rf.frequency.value=1500;
+  const rf2=a.createBiquadFilter();rf2.type='highpass';rf2.frequency.value=320;
+  const rg=a.createGain();rg.gain.value=.04;
+  rain.connect(rf);rf.connect(rf2);rf2.connect(rg);rg.connect(master);rain.start();
+  const rl=a.createOscillator();rl.frequency.value=.07;
+  const rlg=a.createGain();rlg.gain.value=.014;rl.connect(rlg);rlg.connect(rg.gain);rl.start();
+  /* 2) 低频床：52/55.5Hz 拍频 */
+  const o1=a.createOscillator();o1.type='sine';o1.frequency.value=52;
+  const o2=a.createOscillator();o2.type='sine';o2.frequency.value=55.5;
+  const dg=a.createGain();dg.gain.value=.035;
+  o1.connect(dg);o2.connect(dg);dg.connect(master);o1.start();o2.start();
+  /* 3) 不安 pad：小二度摩擦，音量跟恐惧值走 */
+  const p1=a.createOscillator();p1.type='sawtooth';p1.frequency.value=110;
+  const p2=a.createOscillator();p2.type='sawtooth';p2.frequency.value=116.5;
+  const pf=a.createBiquadFilter();pf.type='lowpass';pf.frequency.value=420;pf.Q.value=2;
+  const pg=a.createGain();pg.gain.value=0;
+  p1.connect(pf);p2.connect(pf);pf.connect(pg);pg.connect(master);p1.start();p2.start();
+  BGM={a,master,rg,dg,pg,pf,noteT:5,beatT:0,alive:true};
+  droneNodes=[rain,rl,o1,o2,p1,p2,master];
+  bgmInt=setInterval(bgmTick,250);}
+function bgmTick(){if(!BGM||!BGM.alive)return;
+  const a=BGM.a,t=a.currentTime,fear=S.fear/100;
+  const tense=(GHOST.mode==='chase'||GHOST.mode==='block'||(HIDE.on&&HIDE.phase===1))?1:0;
+  BGM.pg.gain.setTargetAtTime(.01+fear*.045+tense*.035,t,.9);
+  BGM.pf.frequency.setTargetAtTime(420+fear*500+tense*700,t,1.2);
+  BGM.dg.gain.setTargetAtTime(.035+tense*.02,t,.8);
+  BGM.noteT-=.25;
+  if(BGM.noteT<=0&&!tense){BGM.noteT=7+Math.random()*13-fear*5;pianoNote(fear);}
+  BGM.beatT-=.25;
+  if(tense&&BGM.beatT<=0){BGM.beatT=Math.max(.28,.55-fear*.2);tenseThump();}}
+function pianoNote(fear){const a=ac();if(!a)return;
+  const scale=[110,130.8,155.6,196,207.7,233.1]; /* A2 C3 Eb3 G3 Ab3 Bb3 */
+  let f=scale[Math.random()*scale.length|0];if(Math.random()<.4)f*=2;
+  const g=a.createGain();g.gain.setValueAtTime(0,a.currentTime);
+  g.gain.linearRampToValueAtTime(.045+fear*.02,a.currentTime+.02);
+  g.gain.exponentialRampToValueAtTime(.0005,a.currentTime+3.2);
+  const p=a.createStereoPanner?a.createStereoPanner():null;
+  if(p){p.pan.value=(Math.random()*2-1)*.7;g.connect(p);p.connect(a.destination);}
+  else g.connect(a.destination);
+  [1,2,2.997,4.02].forEach((h,i)=>{const o=a.createOscillator();o.type=i?'sine':'triangle';
+    o.frequency.value=f*h*(1+(Math.random()-.5)*.0016);
+    const og=a.createGain();og.gain.value=[.9,.3,.14,.07][i];
+    o.connect(og);og.connect(g);o.start();o.stop(a.currentTime+3.3);});}
+function tenseThump(){const a=ac();if(!a)return;
+  const o=a.createOscillator();o.type='sine';
+  o.frequency.setValueAtTime(120,a.currentTime);
+  o.frequency.exponentialRampToValueAtTime(45,a.currentTime+.18);
+  const g=a.createGain();g.gain.setValueAtTime(.13,a.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.22);
+  o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.25);}
+function stopDrone(){clearInterval(bgmInt);bgmInt=null;if(BGM)BGM.alive=false;BGM=null;
+  droneNodes.forEach(x=>{try{x.stop?x.stop():x.disconnect();}catch(e){}});droneNodes=[];}
 function sfxClick(){const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type='square';o.frequency.value=180;g.gain.setValueAtTime(.06,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.06);o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.07);}
 function sfxStep(vol=.4){const a=ac();if(!a)return;const s=a.createBufferSource();s.buffer=noiseBuf(.22);const f=a.createBiquadFilter();f.type='lowpass';f.frequency.value=280;const g=a.createGain();g.gain.setValueAtTime(vol,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.2);s.connect(f);f.connect(g);g.connect(a.destination);s.start();}
 function sfxThunder(){const a=ac();if(!a)return;const s=a.createBufferSource();s.buffer=noiseBuf(2.2);const f=a.createBiquadFilter();f.type='lowpass';f.frequency.setValueAtTime(900,a.currentTime);f.frequency.exponentialRampToValueAtTime(60,a.currentTime+2);const g=a.createGain();g.gain.setValueAtTime(.6,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+2.1);s.connect(f);f.connect(g);g.connect(a.destination);s.start();}
