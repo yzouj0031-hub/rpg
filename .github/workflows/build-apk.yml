@@ -8,6 +8,7 @@ on:
       - 'agent/**'
     paths:
       - index.html
+      - multiplayer.js
       - sw.js
       - manifest.webmanifest
       - icons/**
@@ -22,6 +23,7 @@ on:
       - main
     paths:
       - index.html
+      - multiplayer.js
       - sw.js
       - manifest.webmanifest
       - icons/**
@@ -59,6 +61,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Test multiplayer synchronization
+        run: npm test
 
       - name: Bundle offline web assets
         run: npm run build:web
