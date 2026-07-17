@@ -94,10 +94,11 @@ body.playing #musicToggle{display:flex;}
 #rain.on{opacity:1;}
 
 /* 突脸 */
-#scare{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;background:#000;}
+#scare{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;background:#000;overflow:hidden;}
 #scare.on{display:flex;animation:scarein .12s steps(2) forwards;}
 @keyframes scarein{from{filter:brightness(3)}to{filter:brightness(1)}}
-#scare svg{width:min(96vw,560px);animation:lurch .09s steps(2,end) infinite;}
+#scare img{width:100%;height:100%;object-fit:cover;object-position:50% 43%;filter:contrast(1.12) saturate(.88) brightness(.88);animation:lurch .09s steps(2,end) infinite;}
+#scare::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 45% 66% at 50% 47%,transparent 30%,rgba(35,0,0,.22) 68%,rgba(0,0,0,.82) 100%);mix-blend-mode:multiply;}
 @keyframes lurch{0%{transform:translate(0,0) scale(1)}50%{transform:translate(-8px,5px) scale(1.06)}100%{transform:translate(6px,-7px) scale(1.03)}}
 body.shake #game{animation:bodyshake .07s linear infinite;}
 @keyframes bodyshake{0%{transform:translate(2px,-2px)}50%{transform:translate(-3px,2px)}100%{transform:translate(2px,1px)}}
@@ -161,25 +162,7 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 <div id="hideUI"><div id="breathBar"><div id="breathFill"></div></div><button id="holdBtn">屏 住 呼 吸</button></div>
 <div id="rain"></div>
 
-<div id="scare">
-  <svg viewBox="0 0 400 480" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <radialGradient id="skin" cx="50%" cy="42%" r="65%"><stop offset="0%" stop-color="#e8e4da"/><stop offset="70%" stop-color="#b7b2a5"/><stop offset="100%" stop-color="#4a4640"/></radialGradient>
-      <radialGradient id="pit" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#000"/><stop offset="80%" stop-color="#0a0505"/><stop offset="100%" stop-color="#2a1512"/></radialGradient>
-    </defs>
-    <path d="M200 8 C 70 20 38 150 44 300 C 46 390 60 470 60 470 L 120 470 C 96 380 90 300 96 210 C 100 140 130 70 200 60 C 270 70 300 140 304 210 C 310 300 304 380 280 470 L 340 470 C 340 470 354 390 356 300 C 362 150 330 20 200 8 Z" fill="#050505"/>
-    <ellipse cx="200" cy="230" rx="108" ry="150" fill="url(#skin)"/>
-    <path d="M120 90 C 100 180 104 300 118 400 L 138 396 C 126 300 124 190 142 100 Z" fill="#060606"/>
-    <path d="M280 90 C 300 180 296 300 282 400 L 262 396 C 274 300 276 190 258 100 Z" fill="#060606"/>
-    <path d="M180 70 C 176 120 178 160 184 200 L 196 198 C 190 160 190 120 194 74 Z" fill="#080808" opacity=".9"/>
-    <ellipse cx="160" cy="210" rx="30" ry="38" fill="url(#pit)"/><ellipse cx="242" cy="212" rx="30" ry="40" fill="url(#pit)"/>
-    <circle cx="162" cy="222" r="4" fill="#d8d2c6" opacity=".85"/><circle cx="244" cy="200" r="3" fill="#d8d2c6" opacity=".7"/>
-    <path d="M198 240 C 194 262 192 274 190 284 L 208 286 C 206 274 204 260 202 240 Z" fill="#8a857a" opacity=".6"/>
-    <path d="M148 322 C 180 306 224 306 256 324 C 240 372 214 396 202 396 C 190 396 162 370 148 322 Z" fill="#0a0303"/>
-    <path d="M156 324 C 184 314 220 314 248 326 C 246 332 240 338 234 342 C 212 334 190 334 168 342 C 162 338 158 330 156 324 Z" fill="#c9c2b4" opacity=".9"/>
-    <path d="M160 372 L 152 480 L 250 480 L 242 372 C 228 386 176 386 160 372 Z" fill="#9a9588"/>
-  </svg>
-</div>
+<div id="scare" aria-hidden="true"><img src="assets/ghost/ghost-bride-scare.webp" alt=""></div>
 
 <div class="screen on" id="titleScreen">
   <h1>第<span class="red">十三</span>阶</h1>
@@ -909,16 +892,10 @@ const LAMPS=[];
 })();
 
 /* ---- 幽灵与物品 ---- */
-const gtexC=document.createElement('canvas');gtexC.width=64;gtexC.height=128;
-(function(){const g=gtexC.getContext('2d');
-  g.fillStyle='#cfc9bc';g.beginPath();g.moveTo(32,26);g.quadraticCurveTo(6,60,10,126);g.lineTo(54,126);g.quadraticCurveTo(58,60,32,26);g.fill();
-  g.fillStyle='#0a0a0a';g.beginPath();g.ellipse(32,22,15,20,0,0,7);g.fill();
-  g.fillRect(14,8,8,70);g.fillRect(42,8,8,74);
-  g.fillStyle='#d8d2c6';g.beginPath();g.ellipse(32,24,9,12,0,0,7);g.fill();
-  g.fillStyle='#100808';g.beginPath();g.ellipse(28,22,2.4,3.4,0,0,7);g.fill();g.beginPath();g.ellipse(36,22,2.4,3.4,0,0,7);g.fill();
-  g.fillStyle='#1a0808';g.beginPath();g.ellipse(32,31,3,4,0,0,7);g.fill();})();
-const gspr=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(gtexC),transparent:true,fog:true}));
-gspr.scale.set(.8,1.6,1);gspr.center.set(.5,.45);gspr.visible=false;scene.add(gspr);
+const ghostTx=new THREE.TextureLoader().load('assets/ghost/ghost-bride-sprite.webp');
+ghostTx.encoding=THREE.sRGBEncoding;ghostTx.minFilter=THREE.LinearMipmapLinearFilter;ghostTx.magFilter=THREE.LinearFilter;
+const gspr=new THREE.Sprite(new THREE.SpriteMaterial({map:ghostTx,transparent:true,alphaTest:.035,depthWrite:false,fog:true}));
+gspr.scale.set(.95,1.58,1);gspr.center.set(.5,.45);gspr.visible=false;scene.add(gspr);
 const glowCv=document.createElement('canvas');glowCv.width=64;glowCv.height=64;
 (function(){const g=glowCv.getContext('2d');const gr=g.createRadialGradient(32,32,2,32,32,30);
   gr.addColorStop(0,'rgba(215,225,185,.95)');gr.addColorStop(.4,'rgba(165,195,145,.4)');gr.addColorStop(1,'rgba(140,180,130,0)');
@@ -970,7 +947,13 @@ function render3D(t){
   LAMPS.forEach(L2=>{const v=(0.44+0.26*Math.sin(t*0.004+L2.ph)+(Math.random()<.01?-.35:0))*flick;
     L2.li.intensity=Math.max(0,v);L2.bar.material.emissiveIntensity=Math.max(.05,v*2.2);});
   gspr.visible=GHOST.on;
-  if(GHOST.on)gspr.position.set(GHOST.x,.78,GHOST.y);
+  if(GHOST.on){
+    const hunting=GHOST.mode==='chase'||GHOST.mode==='block'||GHOST.mode==='seek';
+    const pulse=1+(hunting ? .035 : .018)*Math.sin(t*(hunting ? .012 : .0048));
+    gspr.position.set(GHOST.x,.78+.018*Math.sin(t*.0037),GHOST.y);
+    gspr.scale.set(.95*pulse,1.58*pulse,1);gspr.material.rotation=Math.sin(t*.0021)*.025;
+    gspr.material.opacity=GHOST.mode==='flash' ? .72 : .96;
+  }
   const pu=.28+.05*Math.sin(t*0.006);
   ITEMS.forEach(it=>{if(!it.spr)return;it.spr.visible=!it.done()&&S.mode==='play';it.spr.scale.set(pu,pu,1);});
   renderer.setRenderTarget(POST.rt);
@@ -996,6 +979,7 @@ function initCanvasRenderer(){
 
   let W=1,H=1,DPR=1;
   const FOV=Math.PI/3,MAX_DIST=14;
+  const ghostImg=new Image();ghostImg.src='assets/ghost/ghost-bride-sprite.webp';
   const COLORS={W:[135,134,116],T:[98,119,114],L:[66,79,88],D:[83,59,37],B:[61,83,65],G:[34,50,68]};
   const resize2D=()=>{
     W=Math.max(1,innerWidth);H=Math.max(1,innerHeight);DPR=Math.min(devicePixelRatio||1,1.5);
@@ -1023,6 +1007,12 @@ function initCanvasRenderer(){
     if(obj.ghost){
       const size=Math.min(H*.82,H*1.08/Math.max(.45,dist));
       const base=H*.5+size*.46;
+      if(ghostImg.complete&&ghostImg.naturalWidth){
+        const iw=size*(ghostImg.naturalWidth/ghostImg.naturalHeight),bob=Math.sin(t*.004)*size*.012;
+        ctx.save();ctx.translate(sx,base+bob);ctx.globalAlpha=GHOST.mode==='flash' ? .72 : .96;
+        ctx.shadowColor='rgba(150,18,18,.85)';ctx.shadowBlur=Math.max(10,size*.08);
+        ctx.drawImage(ghostImg,-iw*.5,-size,iw,size);ctx.restore();return;
+      }
       ctx.save();ctx.translate(sx,base);
       ctx.shadowColor='rgba(225,235,220,.7)';ctx.shadowBlur=18;
       ctx.fillStyle='rgba(211,211,197,.9)';
