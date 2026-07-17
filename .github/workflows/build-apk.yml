@@ -17,6 +17,20 @@ on:
       - capacitor.config.json
       - scripts/**
       - .github/workflows/build-apk.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - index.html
+      - sw.js
+      - manifest.webmanifest
+      - icons/**
+      - assets/**
+      - package.json
+      - package-lock.json
+      - capacitor.config.json
+      - scripts/**
+      - .github/workflows/build-apk.yml
 
 permissions:
   contents: read
