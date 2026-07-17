@@ -116,10 +116,11 @@ function makeClient(label) {
   const game = {
     S: {
       fear: 0, minute: 41,
-      has: { note: false, battery: false, charm: false, photo: false, umbrella: false },
-      flags: { readWall: false, mirror: 0, lockerOpen: false, chase: false, doorSeq: false, codeKnown: false, deskEvent: false },
+      has: { note: false, battery: false, keycard: false, fuse: false, archive: false, cassette: false, ribbon: false, charm: false, photo: false, umbrella: false },
+      flags: { readWall: false, mirror: 0, guardLog: false, powerOn: false, pianoSolved: false, memorialRead: false, lockerOpen: false, chase: false, doorSeq: false, codeKnown: false, deskEvent: false },
       doorHits: 0, mode: 'title'
     },
+    MW: 32, MH: 22,
     P: { x: 2.5, y: 2.5, a: 0 },
     GHOST: { x: 0, y: 0, on: false, mode: 'none', t: 0 },
     HIDE: { on: false },
@@ -172,19 +173,19 @@ await flush();
 assert.equal(host.game.S.has.note, true);
 assert.equal(host.game.S.minute, 42);
 
-guest.game.P.x = 4.25;
-guest.game.P.y = 3.1;
+guest.game.P.x = 26.25;
+guest.game.P.y = 13.1;
 guest.multi.update(0.2);
 host.multi.update(0.2);
 const teammate = host.multi.remoteSprite();
 assert.ok(teammate);
-assert.ok(Math.abs(teammate.x - 4.25) < 0.01);
-assert.ok(Math.abs(teammate.y - 3.1) < 0.01);
+assert.ok(Math.abs(teammate.x - 26.25) < 0.01);
+assert.ok(Math.abs(teammate.y - 13.1) < 0.01);
 
 host.game.GHOST.on = true;
 host.game.GHOST.mode = 'chase';
-host.game.GHOST.x = 4.2;
-host.game.GHOST.y = 3.1;
+host.game.GHOST.x = 26.2;
+host.game.GHOST.y = 13.1;
 assert.equal(host.multi.closestTarget(host.game.P).remote, true);
 
 console.log('双人联机握手、开局、世界状态与位置同步测试通过。');

@@ -33,9 +33,10 @@ body{color:var(--bone);font-family:'Noto Sans SC',sans-serif;font-weight:300;use
 #clock{font-family:'Noto Serif SC',serif;font-weight:500;color:var(--phosphor);letter-spacing:.3em;font-size:13px;}
 #clock.late{color:var(--blood-hot);}
 #zone{font-size:11px;letter-spacing:.35em;color:#6b756f;margin-top:5px;}
+#objective{font-size:9px;letter-spacing:.12em;color:#8f8979;margin-top:6px;max-width:56vw;line-height:1.5;}
 #fearbar{width:64px;height:2px;background:#151d19;margin-top:7px;}
 #fearfill{height:100%;width:0%;background:var(--blood);transition:width .8s;}
-#inv{position:fixed;z-index:8;top:calc(52px + env(safe-area-inset-top));left:16px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none;max-width:60vw;}
+#inv{position:fixed;z-index:8;top:calc(72px + env(safe-area-inset-top));left:16px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none;max-width:62vw;}
 .tag{font-size:10px;letter-spacing:.2em;color:var(--paper);border:1px solid #33301f;padding:2px 7px;background:rgba(20,18,10,.6);}
 #musicToggle{position:fixed;z-index:12;right:14px;top:calc(38px + env(safe-area-inset-top));display:none;align-items:center;gap:6px;
   appearance:none;border:1px solid rgba(143,179,160,.28);border-radius:20px;background:rgba(5,8,7,.66);color:#77877f;
@@ -175,7 +176,7 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 <div id="grain"></div>
 
 <div id="hud">
-  <div><div id="clock">23:41</div><div id="zone">自习室</div></div>
+  <div><div id="clock">23:41</div><div id="zone">自习室</div><div id="objective">目标 · 调查桌上的纸条</div></div>
   <div id="fearbar"><div id="fearfill"></div></div>
 </div>
 <div id="inv"></div>
@@ -201,7 +202,7 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 
 <div class="screen on" id="titleScreen">
   <h1>第<span class="red">十三</span>阶</h1>
-  <div class="sub">第一人称探索 · 建议戴耳机<br>含突发惊吓画面与音效</div>
+  <div class="sub">第一人称长篇探索 · 单人 / 双人联机<br>建议戴耳机 · 含突发惊吓画面与音效</div>
   <div class="story">期末周，你在文学院赶报告到半夜。
 保安说过：十二点锁大门。
 还说过——下雨的晚上，别走后山那座旧桥。
@@ -399,6 +400,9 @@ function tenseThump(){const a=ac();if(!a)return;
 function stopDrone(){clearInterval(bgmInt);bgmInt=null;if(BGM)BGM.alive=false;BGM=null;
   droneNodes.forEach(x=>{try{x.stop?x.stop():x.disconnect();}catch(e){}});droneNodes=[];}
 function sfxClick(){const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type='square';o.frequency.value=180;g.gain.setValueAtTime(.06,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.06);o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.07);}
+function pianoKeySound(key){const a=ac();if(!a)return;const scale={1:261.63,3:329.63,6:440},f=scale[key]||261.63;
+  const g=a.createGain();g.gain.setValueAtTime(.0001,a.currentTime);g.gain.exponentialRampToValueAtTime(.16,a.currentTime+.015);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+1.8);g.connect(a.destination);
+  [1,2,3.01].forEach((h,i)=>{const o=a.createOscillator(),og=a.createGain();o.type=i?'sine':'triangle';o.frequency.value=f*h;og.gain.value=[1,.25,.1][i];o.connect(og);og.connect(g);o.start();o.stop(a.currentTime+1.85);});}
 function sfxStep(vol=.4){const a=ac();if(!a)return;const s=a.createBufferSource();s.buffer=noiseBuf(.22);const f=a.createBiquadFilter();f.type='lowpass';f.frequency.value=280;const g=a.createGain();g.gain.setValueAtTime(vol,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.2);s.connect(f);f.connect(g);g.connect(a.destination);s.start();}
 function sfxThunder(){const a=ac();if(!a)return;const s=a.createBufferSource();s.buffer=noiseBuf(2.2);const f=a.createBiquadFilter();f.type='lowpass';f.frequency.setValueAtTime(900,a.currentTime);f.frequency.exponentialRampToValueAtTime(60,a.currentTime+2);const g=a.createGain();g.gain.setValueAtTime(.6,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+2.1);s.connect(f);f.connect(g);g.connect(a.destination);s.start();}
 function sfxWhisper(){const a=ac();if(!a)return;const s=a.createBufferSource();s.buffer=noiseBuf(1.4);const f=a.createBiquadFilter();f.type='bandpass';f.frequency.value=1600;f.Q.value=6;const g=a.createGain();g.gain.setValueAtTime(.001,a.currentTime);g.gain.exponentialRampToValueAtTime(.12,a.currentTime+.5);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+1.3);const p=a.createStereoPanner?a.createStereoPanner():null;s.connect(f);if(p){f.connect(g);g.connect(p);p.pan.value=(Math.random()>.5?1:-1)*.8;p.connect(a.destination);}else{f.connect(g);g.connect(a.destination);}s.start();}
@@ -408,24 +412,41 @@ function heart(on){if(on&&!heartTimer){heartTimer=setInterval(()=>{const a=ac();
   if(!on&&heartTimer){clearInterval(heartTimer);heartTimer=null;}}
 
 /* ============ 地图 ============ */
-const MAP=[
-"WGGGWGGGGGGGGGGWTTTW",
-"G...W..........T...T",
-"G..................T",
-"G...W..........T...T",
-"WWWDW..BBBBBB..WDTTW",
-"B......WWWWWW......L",
-"B......WWWWWW......L",
-"B......WWWWWW......L",
-"W..................L",
-"W..................W",
-"WWWWWWWW..WWWWWWWWWW",
-"WWWWWW....WWWWWWWWWW",
-"WWWWWW....WWWWWWWWWW",
-"WWWWWWWDDWWWWWWWWWWW"];
-const MW=20,MH=MAP.length;
+const MW=32,MH=22;
+const MAP=(()=>{
+  const grid=Array.from({length:MH},()=>Array(MW).fill('W'));
+  const oldWing=[
+    "WGGGWGGGGGGGGGGWTTTW","G...W..........T...T","G..................T","G...W..........T...T",
+    "WWWDW..BBBBBB..WDTTW","B......WWWWWW......L","B......WWWWWW......L","B......WWWWWW......L",
+    "W..................L","W..................W","WWWWWWWW..WWWWWWWWWW","WWWWWW....WWWWWWWWWW",
+    "WWWWWW....WWWWWWWWWW","WWWWWWWDDWWWWWWWWWWW"];
+  oldWing.forEach((row,y)=>[...row].forEach((cell,x)=>grid[y][x]=cell));
+  const room=(x0,y0,x1,y1,wall)=>{
+    for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)grid[y][x]=(x===x0||x===x1||y===y0||y===y1)?wall:'.';
+  };
+  room(20,0,31,7,'P');                 // 旧音乐教室
+  room(20,9,31,17,'A');                // 封存档案室
+  room(0,14,19,21,'R');                // 地下值班区与设备层
+  for(let x=19;x<=30;x++)grid[8][x]='.'; // 东翼连廊
+  grid[8][31]='W';grid[7][25]='.';grid[9][25]='.';
+  grid[13][6]='.';grid[14][6]='.';     // 楼梯间下行口
+  for(let y=14;y<=18;y++)grid[y][10]='R';
+  grid[16][10]='.';                    // 值班室到配电间
+  for(let x=0;x<=19;x++)grid[18][x]='R';
+  grid[18][14]='.';                    // 设备层到地下通道
+  grid[16][19]='.';grid[16][20]='.';   // 地下通道通往档案室
+  for(let y=11;y<=15;y++){grid[y][23]='A';grid[y][28]='A';}
+  grid[13][23]='.';grid[14][28]='.';   // 书架之间的缺口
+  return grid.map(row=>row.join(''));
+})();
 function wallAt(x,y){if(x<0||y<0||x>=MW||y>=MH)return true;return MAP[Math.floor(y)][Math.floor(x)]!=='.'}
 function zoneName(x,y){
+  if(x>=20&&y<8)return '旧音乐教室';
+  if(x>=20&&y<9)return '东翼连廊';
+  if(x>=20&&y>=9)return '封存档案室';
+  if(y>=19)return '积水地下通道';
+  if(y>=14&&x<10)return '保安值班室';
+  if(y>=14)return '地下配电间';
   if(y<4&&x<5)return '自习室';
   if(y<4&&x>14)return '洗手间';
   if(y<4)return '三楼走廊';
@@ -436,15 +457,30 @@ function zoneName(x,y){
 }
 
 /* ============ 状态 ============ */
-const S={fear:0,minute:41,has:{note:false,battery:false,charm:false,photo:false,umbrella:false},
-  flags:{readWall:false,mirror:0,lockerOpen:false,chase:false,doorSeq:false,codeKnown:false,deskEvent:false},doorHits:0,mode:'title'};
+const S={fear:0,minute:41,
+  has:{note:false,battery:false,keycard:false,fuse:false,archive:false,cassette:false,ribbon:false,charm:false,photo:false,umbrella:false},
+  flags:{readWall:false,mirror:0,guardLog:false,powerOn:false,pianoSolved:false,memorialRead:false,lockerOpen:false,chase:false,doorSeq:false,codeKnown:false,deskEvent:false},
+  doorHits:0,mode:'title'};
 const P={x:2.5,y:2.5,a:0};
 const GHOST={x:0,y:0,on:false,mode:'none',t:0};
 const $=id=>document.getElementById(id);
 function addFear(n){S.fear=Math.max(0,Math.min(100,S.fear+n));$('fearfill').style.width=S.fear+'%';$('grain').style.opacity=(0.07+S.fear/100*0.22).toFixed(2);$('vig').style.opacity=(0.4+S.fear/100*0.4).toFixed(2);heart(S.fear>=60);if(S.fear>=100)endGame('mad');}
 function renderClock(){let m=S.minute,late=m>=60;if(late)m-=60;const c=$('clock');c.textContent=(late?'00':'23')+':'+String(m).padStart(2,'0');c.classList.toggle('late',late);}
 function tick(n){S.minute+=n;renderClock();}
-function inv(){const el=$('inv');el.innerHTML='';const names={note:'纸条',battery:'电池',charm:'平安符',photo:'旧照片',umbrella:'旧伞'};for(const k in S.has)if(S.has[k]){const t=document.createElement('span');t.className='tag';t.textContent=names[k];el.appendChild(t);}}
+function objectiveText(){
+  if(!S.has.note)return '调查桌上的纸条';
+  if(!S.flags.guardLog)return '沿楼梯下行，搜索保安值班室';
+  if(!S.has.fuse&&!S.flags.powerOn)return '在值班室隔壁工具柜找保险丝';
+  if(!S.flags.powerOn)return '前往地下配电间，恢复东翼供电';
+  if(!S.has.archive)return '用旧门禁卡进入东翼封存档案室';
+  if(!S.has.cassette)return '去旧音乐教室，按 6 → 1 → 3 弹琴';
+  if(!S.has.ribbon)return '带磁带到积水地下通道的小供桌';
+  if(!S.flags.lockerOpen)return '回三楼储物柜，输入日期 0613';
+  if(!S.has.umbrella)return '去楼梯间取走林晚的黑布伞';
+  return '前往楼梯间后门，踏上旧桥';
+}
+function renderObjective(){const el=$('objective');if(el)el.textContent='目标 · '+objectiveText();}
+function inv(){const el=$('inv');el.innerHTML='';const names={note:'纸条',battery:'电池',keycard:'旧门禁卡',fuse:'陶瓷保险丝',archive:'事故档案',cassette:'旧磁带',ribbon:'红头绳',charm:'平安符',photo:'旧照片',umbrella:'旧伞'};for(const k in S.has)if(S.has[k]){const t=document.createElement('span');t.className='tag';t.textContent=names[k];el.appendChild(t);}renderObjective();}
 function refreshSharedUi(){renderClock();inv();}
 function shareWorld(reason){if(window.MULTI)MULTI.worldChanged(reason);}
 
@@ -456,6 +492,12 @@ const ITEMS=[
  {id:'mirror',x:18.3,y:3.3,label:'发黄的镜子',done:()=>S.flags.mirror>=2,act:mirrorAct},
  {id:'locker',x:15.5,y:8.6,label:'带锁的储物柜',done:()=>S.flags.lockerOpen,act:lockerAct},
  {id:'umb',x:6.7,y:11.5,label:'墙角的旧伞',done:()=>S.has.umbrella,act:umbAct},
+ {id:'guard',x:3.2,y:16.2,label:'值班记录与抽屉',done:()=>S.flags.guardLog,act:guardAct},
+ {id:'fuse',x:13.2,y:16.2,label:'工具柜里的白瓷管',done:()=>S.has.fuse||S.flags.powerOn,act:fuseAct},
+ {id:'power',x:16.2,y:20.2,label:'锈蚀的配电箱',done:()=>S.flags.powerOn,act:powerAct},
+ {id:'archive',x:26.0,y:13.0,label:'1987 年事故卷宗',done:()=>S.has.archive,act:archiveAct},
+ {id:'piano',x:26.0,y:4.0,label:'蒙灰的旧钢琴',done:()=>S.flags.pianoSolved,act:pianoAct},
+ {id:'memorial',x:4.0,y:20.0,label:'没有名字的小供桌',done:()=>S.has.ribbon,act:memorialAct},
  {id:'exit',x:8,y:12.4,label:'后门 · 出去',done:()=>false,act:exitAct},
 ];
 
@@ -473,12 +515,46 @@ function say(html,choices){
 }
 function closePanel(){panelOpen=false;$('panel').classList.remove('on');}
 
-function noteAct(){S.has.note=true;S.flags.codeKnown=S.flags.readWall;inv();tick(1);shareWorld('note');
-  say(`纸条上的字迹很急：\n<span class="paper">「我先走了。别等到十二点。\n如果只能走后山的桥——去楼下我柜子里拿那个东西。\n密码是'她走的那一年'。」</span>\n\n她的柜子……在储物柜区。`,[{label:'收起纸条',act:closePanel}]);}
+function noteAct(){S.has.note=true;inv();tick(1);shareWorld('note');
+  say(`纸条上的字迹很急：\n<span class="paper">「东翼又跳闸了。要是我没回来，先去楼下值班室。\n保安抽屉里有旧门禁卡，档案室还封着 1987 年那份卷宗。\n我的柜子里有能过桥的东西。密码不是她走的年份——\n是她没有等到人的那一天。」</span>\n\n纸条背面画着一条歪斜的路线：<span class="em">楼梯间向下，值班室。</span>`,[{label:'收起纸条',act:closePanel}]);}
 function wallAct(){S.flags.readWall=true;tick(1);addFear(6);shareWorld('wall');
-  say(`「本校创立于 1963 年。」\n「后山石桥建于 1958 年，共十二阶。」\n最角落有一张剪报，标题被撕掉了半边——\n<span class="bad">「1987 年 · 雨夜 · 女学生……坠……」</span>\n剪报下有人用笔写了一行小字：<span class="paper">「不要数完。」</span>`,[{label:'后退一步',act:closePanel}]);}
+  say(`「本校创立于 1963 年。」\n「后山石桥建于 1958 年，共十二阶。」\n最角落有一张剪报，标题被撕掉了半边——\n<span class="bad">「1987 年 6 月 · 雨夜 · 女学生……失踪……」</span>\n照片里，旧音乐教室的合唱队少了一个人。档案编号的位置被黑笔涂掉，只剩<span class="paper">「东翼封存室」</span>几个字。\n剪报下还有一句后来添上的话：<span class="paper">「不要数完。」</span>`,[{label:'记下东翼的位置',act:closePanel}]);}
 function sinkAct(){S.has.battery=true;inv();tick(1);addFear(4);shareWorld('battery');
   say(`水槽里的水是凉的，凉得不像自来水。\n你摸出两节<span class="em">电池</span>，装进手电——\n<span class="em">光柱一下子亮了很多。</span>\n是谁把电池泡在这里的？`,[{label:'离开水槽',act:closePanel}]);}
+function guardAct(){S.flags.guardLog=true;S.has.keycard=true;inv();tick(2);addFear(7);shareWorld('guard-log');
+  say(`值班室的台灯还亮着，椅子却在缓慢地转。\n桌上摊着今晚的记录：\n<span class="paper">「23:47 · 东翼旧音乐教室传出钢琴声。」\n「23:51 · 封存室与地下层同时跳闸。」\n「23:56 · 广播自动点名：林晚。」</span>\n\n最后一行不是保安的字：<span class="bad">「她今天也没有等到。」</span>\n你从抽屉里找到一张<span class="em">旧门禁卡</span>。背面贴着便签：\n「配电箱缺一只白瓷保险丝，备用件在隔壁工具柜。」`,[{label:'带上门禁卡',act:closePanel}]);}
+function fuseAct(){S.has.fuse=true;inv();tick(1);addFear(3);shareWorld('fuse');
+  say(`工具柜最里面躺着一只<span class="em">白瓷保险丝</span>，表面写着「东翼 / 地下层」。\n你拿起它时，柜子深处传来一声很轻的敲击。\n一下。\n停了两秒。\n又一下。\n<span class="bad">像有人被锁在墙后面。</span>`,[{label:'关上柜门',act:closePanel}]);}
+function powerAct(){
+  if(!S.has.fuse){say(`配电箱里空着一个焦黑的卡槽。铭牌写着：<span class="em">东翼 / 地下层 · 10A 白瓷保险丝</span>。\n旁边用粉笔写了「备用件在值班室工具柜」。`,[{label:'先去找保险丝',act:closePanel}]);return;}
+  S.has.fuse=false;S.flags.powerOn=true;inv();tick(2);addFear(10);sfxThunder();
+  GHOST.on=true;GHOST.mode='flash';GHOST.x=14.5;GHOST.y=19.5;GHOST.t=1.5;shareWorld('power-on');
+  say(`保险丝推入卡槽。\n<span class="em">咔。</span>\n整座楼先彻底黑了一秒，然后远处的灯一排一排亮起。\n东翼传来卷帘门升起的摩擦声。\n\n头顶那只早已拆线的喇叭忽然响了：\n<span class="bad">「请林晚同学，到旧音乐教室参加最后一次排练。」</span>\n广播结束后，你听见地下通道里有湿漉漉的脚步声，正朝亮处走来。`,[{label:'去东翼档案室',act:closePanel}]);}
+function archiveAct(){
+  if(!S.flags.powerOn){say(`档案室的铁卷帘门压得严严实实。刷卡器没有亮——<span class="em">东翼还没通电</span>。`,[{label:'去地下配电间看看',act:closePanel}]);return;}
+  if(!S.has.keycard){say(`卷帘门升起来了，但里面还有一道门。门禁屏显示：<span class="bad">仅限保卫处旧卡</span>。`,[{label:'去值班室找门禁卡',act:closePanel}]);return;}
+  S.has.archive=true;S.flags.codeKnown=true;inv();tick(3);addFear(12);shareWorld('archive');
+  say(`门禁卡居然还能用。最里面那只档案盒写着：<span class="em">「1987·06·13 / 林晚」</span>。\n\n卷宗说，林晚是旧校合唱队的领唱。6 月 13 日雨夜，她在桥上等同学<span class="paper">苏禾</span>送来演出服和黑布伞，监控在 23:58 拍到她独自踏上桥，此后失踪。\n证词只有一句：<span class="bad">「我去晚了。她数到了十三。」</span>\n\n附件里夹着半张乐谱，<span class="paper">第六、第一、第三个音被红笔圈起</span>。背面写着：\n「磁带藏在琴里。0613——别再忘了这一天。」\n\n你终于知道储物柜的密码了。可那盘磁带，或许还在旧音乐教室。`,[{label:'收好卷宗，去音乐教室',act:closePanel}]);}
+let pianoProgress=0;
+function pianoAct(){
+  if(!S.has.archive){sfxWhisper();addFear(4);say(`钢琴盖上积着厚厚的灰，只有三个琴键很干净：<span class="paper">一、三、六</span>。\n你随手按下一键。走廊深处，另一个钢琴音在同一秒响起。\n……需要先找到乐谱。`,[{label:'不要乱弹了',act:closePanel}]);return;}
+  const pressed=pianoProgress?`\n已经按下：<span class="paper">${[6,1,3].slice(0,pianoProgress).join(' → ')}</span>`:'';
+  say(`卷宗里的乐谱圈出了三个音：<span class="em">六、 一、 三</span>。${pressed}\n琴键下面，好像卡着什么东西。`,[
+    {label:'按下「一」',act:()=>pressPiano(1)},{label:'按下「三」',act:()=>pressPiano(3)},
+    {label:'按下「六」',act:()=>pressPiano(6)},{label:'暂时离开',act:closePanel}]);}
+function pressPiano(key){
+  pianoKeySound(key);const code=[6,1,3];
+  if(key!==code[pianoProgress]){pianoProgress=0;addFear(4);sfxWhisper();say(`音符落下后，教室角落传来一个女人压得很低的笑声。\n<span class="bad">顺序错了。</span>`,[{label:'重新看乐谱',act:pianoAct},{label:'先离开',act:closePanel}]);return;}
+  pianoProgress++;
+  if(pianoProgress<code.length){pianoAct();return;}
+  pianoProgress=0;S.flags.pianoSolved=true;S.has.cassette=true;inv();tick(2);addFear(9);shareWorld('piano');
+  say(`第三个音落下，琴键下方「咔」地弹开一格暗屉。里面是一盘<span class="em">旧磁带</span>。\n教室角落的录音机自己转了起来：\n\n<span class="paper">「林晚，我是苏禾。对不起。保安不让我出门，我把伞留在楼梯间了。你别上桥，等我……」</span>\n\n录音忽然变成暴雨和数台阶的声音。\n「……十一。十二。」\n紧接着，一个陌生的女声贴着磁头问：\n<span class="bad">「十三呢？」</span>`,[{label:'带上磁带',act:closePanel}]);}
+function memorialAct(){
+  S.flags.memorialRead=true;
+  if(!S.has.archive){addFear(4);say(`地下积水里摆着一张小供桌，没有牌位，只有一只发霉的空相框。\n桌脚缠着褪色的红线，像有人不敢把名字留下。`,[{label:'以后再回来',act:closePanel}]);return;}
+  if(!S.has.cassette){say(`你把卷宗编号念了一遍。空相框里慢慢浮出两个字：<span class="bad">林晚</span>。\n供桌下面却传来磁带倒转般的沙沙声。也许她还在等那句迟到的话。`,[{label:'去旧音乐教室找磁带',act:closePanel}]);return;}
+  S.has.ribbon=true;inv();tick(1);addFear(-8);shareWorld('memorial');
+  say(`你把磁带放在供桌上，按下播放。\n苏禾迟到了三十九年的那句「等我」，终于在地下通道里完整响了一遍。\n积水无风起纹。空相框里出现林晚穿合唱服的照片——她没有笑，却也不再望向桥。\n\n相框背后掉出一根<span class="em">红头绳</span>。旁边多了一行湿漉漉的字：\n<span class="paper">「替我系在伞上。让我认得回来的路。」</span>`,[{label:'带上红头绳',act:closePanel}]);}
 function mirrorAct(){S.flags.mirror++;shareWorld('mirror');
   if(S.flags.mirror===1){sfxWhisper();addFear(14);
     say(`你用手抹开镜子上的雾。\n镜子里是你自己，疲惫，眼下发青。\n但你身后靠墙的位置——\n<span class="bad">好像立着一个比阴影更深的东西。</span>\n你猛地回头。什么都没有。`,
@@ -487,15 +563,16 @@ function mirrorAct(){S.flags.mirror++;shareWorld('mirror');
     setTimeout(()=>jumpscare(()=>endGame('mirror')),900);}}
 function lockerAct(){
   if(!S.has.note){say(`一排铁皮储物柜，其中一个挂着<span class="em">四位数密码锁</span>。\n你不知道是谁的柜子，也不知道密码。`,[{label:'离开',act:closePanel}]);return;}
+  if(!S.flags.codeKnown){say(`密码锁的数字已经被磨得发亮。\n纸条说密码是<span class="paper">「她没有等到人的那一天」</span>，可年份和日期都不完整。\n东翼封存档案室里，也许有那起失踪案的卷宗。`,[{label:'先去查清那一天',act:closePanel}]);return;}
   const tryCode=(ok)=>()=>{if(ok){S.flags.lockerOpen=true;S.has.charm=true;S.has.photo=true;inv();sfxThunder();addFear(8);tick(2);shareWorld('locker');
-      say(`「咔哒。」锁开了。\n柜子里只有两样东西：\n一张对折的<span class="paper">平安符</span>，边缘焦黑，像被火燎过。\n一张<span class="em">旧照片</span>：黑白的，拍的是后山那座桥。\n你数了数照片里的台阶——<span class="bad">十三阶。最上面站着一个白色的影子。</span>\n照片背面有一行褪色的钢笔字：<span class="paper">「林晚 · 1987.6」</span>\n\n身后的走廊尽头，声控灯「啪」的一声，灭了。\n<span class="bad">有什么东西，正在黑暗里朝你走过来。</span>`,
+      say(`「咔哒。」锁开了。\n柜子里有一张对折的<span class="paper">平安符</span>，还有一张合唱队合照。\n照片中，林晚把头靠在苏禾肩上，两个人共撑一把黑布伞。背面写着：\n<span class="paper">「小晚，6 月 13 日，等我把伞送来。——苏禾」</span>\n\n你把旧磁带贴近照片时，照片里的苏禾缓缓转过脸，像是在看你。\n身后的声控灯「啪」地灭了。\n<span class="bad">一串湿脚印正从东翼延伸过来，停在你背后。</span>`,
         [{label:'跑！去楼梯间的后门！',cls:'danger',act:()=>{closePanel();startChase();}}]);
     }else{sfxWhisper();addFear(7);
       say(`锁没有动。\n但你听见柜子<span class="bad">里面</span>，传来一下很轻的、指甲划铁皮的声音。`,[{label:'……',act:lockerAct}]);}};
   const cs=[];
-  if(S.flags.readWall){cs.push({label:'输入 1958',act:tryCode(false)},{label:'输入 1963',act:tryCode(false)},{label:'输入 1987',act:tryCode(true)});}
+  cs.push({label:'输入 0613',act:tryCode(true)},{label:'输入 1987',act:tryCode(false)},{label:'输入 1958',act:tryCode(false)});
   cs.push({label:'离开',act:closePanel});
-  say(`她的柜子。<span class="em">四位数密码锁</span>。\n纸条上说：密码是<span class="paper">「她走的那一年」</span>。`+(S.flags.readWall?'':`\n……哪一年？校史墙上也许有线索。`),cs);}
+  say(`林晚的柜子。<span class="em">四位数密码锁</span>。\n卷宗写着失踪日期：<span class="paper">1987 年 6 月 13 日</span>。\n纸条提醒过，密码不是年份，而是<span class="paper">她没有等到人的那一天</span>。`,cs);}
 function umbAct(){
   if(!S.has.photo){addFear(5);sfxWhisper();tick(1);
     say(`楼梯间的墙角，立着一把黑布伞。\n伞骨断了一根，伞面上的水珠还没干。\n——可今晚，除了你，没有别人留下来。\n\n伞柄上刻着一行快磨平的小字：\n<span class="paper">「高三(2)班 · 林晚」</span>\n这所学校……有过高中部吗？`,
@@ -505,7 +582,9 @@ function umbAct(){
     [{label:'带上它',act:closePanel}]);}
 function exitAct(){
   if(GHOST.mode==='chase'){escapeToBridge();return;}
-  say(`后门就在眼前。门外，雨声。\n再往前，就是后山的<span class="em">旧桥</span>了。\n出去了，就没有回头路。`+(S.has.charm?'':`\n（你总觉得……好像还缺了点什么。）`),
+  if(!S.flags.powerOn){say(`你压下门把，电子锁却没有任何反应。\n门框上的疏散指示灯已经熄灭：<span class="bad">地下层断电，后门保持锁闭</span>。\n要离开这里，必须先去楼下配电间恢复供电。`,[{label:'去楼下找配电箱',act:closePanel}]);return;}
+  const missing=!S.has.charm||!S.has.umbrella||!S.has.cassette||!S.has.ribbon;
+  say(`后门就在眼前。门外，雨声。\n再往前，就是后山的<span class="em">旧桥</span>了。\n出去了，就没有回头路。`+(missing?`\n<span class="paper">（东翼与地下层里，似乎还有没拼完整的真相。）</span>`:''),
     [{label:'推门出去',cls:'danger',act:()=>{ if(S.flags.chase){escapeToBridge();}else{doorSequence();} }},
      {label:'再回去看看',act:closePanel}]);}
 function doorSequence(){
@@ -591,7 +670,9 @@ function nextStep(){step++;if(step>13)return;sfxStep(.5);if(navigator.vibrate)na
     setTimeout(()=>{$('bridgeMode').classList.remove('on');
       say(`你明明数着，桥应该到头了。\n可你的脚，落在了<span class="bad">第十三阶</span>上。\n\n身后，有一只冰凉的手，<span class="bad">轻轻拍了拍你的肩膀。</span>\n一个很轻很轻的声音，贴着你的后颈：\n<span class="bad">「同学——借个伞好不好？」</span>`,[
         {label:'回头',cls:'danger',act:()=>{say('你回头了。',[]);setTimeout(()=>jumpscare(()=>endGame('look')),500);}},
-        {label:'把伞递到身后',cond:()=>S.has.umbrella,act:()=>endGame('umbrella')},
+        {label:'把红头绳系在伞柄上，再递到身后',cond:()=>S.has.umbrella&&S.has.ribbon,act:()=>endGame('home')},
+        {label:'把伞递到身后',cond:()=>S.has.umbrella&&!S.has.ribbon,act:()=>endGame('umbrella')},
+        {label:'播放那盘旧磁带',cond:()=>S.has.cassette&&!S.has.umbrella,act:()=>endGame('recording')},
         {label:'轻声说出她的名字',cond:()=>S.has.photo&&!S.has.umbrella,act:()=>endGame('name')},
         {label:'攥紧平安符，继续往前走',cond:()=>S.has.charm,act:()=>endGame('escape')},
         {label:'不回头，硬着头皮往前走',cond:()=>!S.has.charm,act:()=>{
@@ -604,7 +685,9 @@ function jumpscare(then,hold=1400){sfxScream();document.body.classList.add('shak
   if(navigator.vibrate)navigator.vibrate([80,40,120,40,200]);
   setTimeout(()=>{$('scare').classList.remove('on');document.body.classList.remove('shake');if(then)then();},hold);}
 const ENDS={
+ home:{name:'归 路',tag:'隐藏真结局 · 记得',dead:false,story:`你没有回头。\n你把红头绳一圈一圈系在伞柄上，再将伞递到身后。\n\n那只冰冷的手碰到红线时，忽然颤了一下。\n磁带在书包里自行转动。苏禾迟到三十九年的声音穿过雨幕：\n「小晚，等我。」\n\n桥上不再只有数台阶的声音。\n林晚很轻地笑了，像照片里那个还没来得及赴约的女孩。\n她接过伞，沿着红线映出的微光，向桥的另一头走去。\n第十三阶在她身后慢慢沉进雨水。\n\n天亮后，你把卷宗、磁带与合照交给了校史馆。\n学校在旧桥旁立起一块小小的纪念牌：\n「林晚，旧校合唱队领唱。她曾在这里生活，也曾被人等待。」\n\n六月十三日的傍晚，有人把一把系着红头绳的黑伞放在牌前。\n没有署名。\n只有一张便签：\n「这次，我没有迟到。——苏禾」\n\n从此，旧桥永远只有十二阶。`},
  umbrella:{name:'雨 停',tag:'真结局 · 还伞',dead:false,story:`你没有回头。\n你只是把那把旧伞，往身后递了过去。\n\n肩上的手松开了。\n伞被很轻、很轻地接住。\n\n「……等到了。」\n\n身后传来伞面撑开的声音。雨声忽然远了。\n你陪着那阵几乎听不见的脚步声，\n一起走完了第十三阶。\n落脚的时候，脚下是桥那头的泥土。\n你回头——旧桥安安静静立在雨里。\n十二阶。\n\n第二天，你把伞交到了失物招领处。\n登记簿最旧的那一页写着：\n「1987.6 · 林晚 · 黑布伞一把 · 未领」\n你在「未领」两个字上，替她轻轻画了一条横线。\n\n从那以后，雨夜的旧桥，\n再没有人数出过十三阶。`},
+ recording:{name:'迟到的声音',tag:'结局 · 回音',dead:false,story:`你没有回头，只把磁带按下播放。\n\n「小晚，我是苏禾。你别上桥，等我……」\n\n肩上的手慢慢松开。身后的女孩听完了整盘磁带，直到塑料齿轮空转。\n她没有再问你借伞，只轻轻说：\n「她来过。只是来晚了。」\n\n你活着走下桥。可第十三阶没有消失。\n往后的雨夜，桥边偶尔会响起磁带沙沙的底噪，随后是两个隔着三十九年、始终没能碰面的声音。\n一个说「等我」。\n另一个说「我还在」。`},
  name:{name:'同 路',tag:'结局 · 纠缠',dead:false,story:`「林晚。」\n你听见自己的声音在雨里发抖。\n\n肩上的手，停住了。\n很久。久到雨都小了，\n那个声音才轻轻应了一声：\n「……原来，还有人记得。」\n\n你活着走下了桥。\n只是每年六月的那个雨夜，你都会梦见它。\n梦里你站在第一阶，身后有人轻声问：\n「今年，也陪我数一遍好不好？」\n\n你知道你会去的。\n年年都会。`},
  escape:{name:'桥的那头',tag:'结局 · 生还',dead:false,story:`符纸在你掌心发烫。\n那只手停在了你的肩膀上，没有再用力。\n你一步、一步走下桥，始终没有回头。\n\n身后的雨声里，那个声音轻轻说了一句：\n「……谢谢你陪我数完。」\n\n第二天，你在校史馆查到：1987年的那个雨夜，\n有个女生在桥上等人送伞，等到了午夜。\n\n从此你再也没有在雨夜留过校。\n只是偶尔想起来：\n她要的，好像从来不是符。`},
  look:{name:'回 头',tag:'结局 · 失踪',dead:true,story:`不该回头的。\n监控里最后一次拍到你，是23:58，后门。\n后来去找你的人说，那座桥——\n明明只有十二阶。`},
@@ -681,6 +764,27 @@ function checkNear(){nearItem=null;
 
 /* ============ 玩家移动 ============ */
 let walkT=0,ambT=8;
+const AREA_EVENTS={basement:false,east:false,archive:false,tunnel:false};
+function areaStoryEvent(){
+  if(GHOST.mode!=='none')return false;
+  if(!AREA_EVENTS.basement&&P.y>=14&&P.y<19){
+    AREA_EVENTS.basement=true;sfxWhisper();addFear(5);
+    say(`楼梯向下多出了一层。墙上的楼层牌只有一块被刮花的<span class="paper">「B1」</span>。\n\n值班室的门虚掩着，里面传来老式收音机的电流声；另一边，配电间每隔几秒就响一下金属热胀冷缩的脆响。\n空气里混着机油、潮气，还有一股<span class="bad">刚被雨淋湿的头发味</span>。`,[{label:'进入地下值班区',act:closePanel}]);return true;
+  }
+  if(!AREA_EVENTS.east&&P.x>=20&&P.y<9){
+    AREA_EVENTS.east=true;sfxWhisper();addFear(6);
+    say(`东翼连廊比主楼老得多。墙皮下露出木制骨架，褪色的节目单一直贴到旧音乐教室门口。\n最近一张写着：<span class="paper">「1987 届毕业汇演 · 独唱：林晚」</span>。\n\n教室里明明没有人，钢琴却在你靠近时，自己把中央 C 键按了下去。`,[{label:'走进旧音乐教室',act:closePanel}]);return true;
+  }
+  if(!AREA_EVENTS.archive&&P.x>=20&&P.y>=9){
+    AREA_EVENTS.archive=true;sfxWhisper();addFear(7);
+    say(`封存室里竖着一排排档案架。标签从 1963 年一路排到 1987 年，然后突然中断。\n你经过第三排时，所有抽屉同时向外滑开一寸。\n只有最深处那只没有动。它的铜牌上凝着水珠：<span class="bad">「6·13 / 桥」</span>。`,[{label:'继续找那份卷宗',act:closePanel}]);return true;
+  }
+  if(!AREA_EVENTS.tunnel&&P.y>=19){
+    AREA_EVENTS.tunnel=true;sfxWhisper();addFear(5);
+    say(`地下通道积着没过鞋底的冷水。你每走一步，前方都会提前响起另一步。\n墙边摆着许多已经烂掉的花束，卡片上的年份不同，名字却都被水泡掉了。\n通道尽头有一张没有牌位的小供桌，像有人在这里<span class="paper">偷偷纪念同一个人</span>。`,[{label:'涉水过去',act:closePanel}]);return true;
+  }
+  return false;
+}
 function tryMove(nx,ny){const r=0.22;
   if(!wallAt(nx+r,P.y)&&!wallAt(nx-r,P.y))P.x=nx;
   if(!wallAt(P.x,ny+r)&&!wallAt(P.x,ny-r))P.y=ny;}
@@ -694,6 +798,7 @@ function update(dt){
   const vx=(ca*f - sa*s)*sp, vy=(sa*f + ca*s)*sp;
   if(vx||vy){tryMove(P.x+vx,P.y+vy);walkT+=dt;if(walkT>0.42){walkT=0;sfxStep(.18);}}
   $('zone').textContent=zoneName(P.x,P.y);
+  if(areaStoryEvent()){checkNear();return;}
   const authority=!window.MULTI||MULTI.isAuthority();
   /* 走廊封路事件：拿到纸条后第一次往东走 */
   if(authority&&!S.flags.deskEvent&&S.has.note&&GHOST.mode==='none'&&P.y<3.6&&P.x>7.2&&P.x<11.5){
@@ -824,6 +929,29 @@ const texG=ctex((g,w,hh)=>{ // 雨夜的窗
   g.fillStyle='rgba(160,190,215,.18)';for(let i=0;i<16;i++){const x=R(8,118);g.fillRect(x,R(16,40),1.5,R(20,66));}
   g.fillStyle='rgba(90,120,150,.25)';g.beginPath();g.ellipse(96,30,18,12,0,0,7);g.fill();
   g.fillStyle='#57534a';g.fillRect(60,12,8,104);g.fillRect(4,60,120,6);});
+const texA=ctex((g,w,hh)=>{ // 封存档案架
+  g.fillStyle='#30291f';g.fillRect(0,0,w,hh);
+  for(let y=5;y<hh;y+=30){
+    g.fillStyle='#574735';g.fillRect(3,y,w-6,25);g.fillStyle='#211b15';g.fillRect(0,y+24,w,4);
+    for(let x=7;x<w-8;x+=15){g.fillStyle=`rgb(${116+R(-18,12)|0},${96+R(-15,12)|0},${66+R(-12,10)|0})`;g.fillRect(x,y+4,11,18);
+      g.fillStyle='rgba(210,193,147,.55)';g.fillRect(x+2,y+9,7,3);}}
+  g.fillStyle='rgba(30,18,10,.35)';for(let i=0;i<8;i++)g.fillRect(R(0,w),R(0,hh),R(1,4),R(20,70));
+  speck(g,w,hh,620,'#15100c',.45);});
+const texP=ctex((g,w,hh)=>{ // 旧音乐教室木墙
+  g.fillStyle='#412923';g.fillRect(0,0,w,hh);
+  for(let x=0;x<w;x+=21){g.fillStyle=x%42?'#57342c':'#633b30';g.fillRect(x+1,0,19,hh);g.fillStyle='#251815';g.fillRect(x,0,2,hh);}
+  g.strokeStyle='rgba(210,181,132,.28)';g.lineWidth=1;
+  for(let y=36;y<=72;y+=9){g.beginPath();g.moveTo(8,y);g.lineTo(120,y);g.stroke();}
+  g.fillStyle='rgba(24,13,12,.45)';for(let i=0;i<12;i++){g.beginPath();g.arc(18+i*9,54+Math.sin(i)*13,2.2,0,7);g.fill();}
+  speck(g,w,hh,520,'#170f0d',.4);});
+const texR=ctex((g,w,hh)=>{ // 地下层潮湿混凝土
+  g.fillStyle='#4e514a';g.fillRect(0,0,w,hh);
+  g.strokeStyle='#30352f';g.lineWidth=3;
+  for(let y=0;y<=hh;y+=32){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();}
+  for(let y=0;y<hh;y+=32)for(let x=(y/32%2)*32;x<w;x+=64){g.beginPath();g.moveTo(x,y);g.lineTo(x,y+32);g.stroke();}
+  g.fillStyle='rgba(20,42,30,.38)';for(let i=0;i<13;i++){g.beginPath();g.ellipse(R(0,w),R(35,hh),R(4,17),R(8,28),R(-.3,.3),0,7);g.fill();}
+  g.fillStyle='rgba(122,76,35,.35)';for(let i=0;i<6;i++)g.fillRect(R(0,w),0,R(1,4),R(42,115));
+  speck(g,w,hh,750,'#20251f',.42);});
 const texF=ctex((g,w,hh)=>{ // 地面：水磨石方砖
   for(let y=0;y<2;y++)for(let x=0;x<2;x++){g.fillStyle=`rgb(${52+R(-6,6)|0},${62+R(-6,6)|0},${56+R(-6,6)|0})`;g.fillRect(x*64,y*64,64,64);}
   g.strokeStyle='#232c26';g.lineWidth=3;
@@ -846,6 +974,9 @@ const M={
   D:new THREE.MeshPhongMaterial({map:texD,bumpMap:texD,bumpScale:.014,shininess:8}),
   B:new THREE.MeshPhongMaterial({map:texB,bumpMap:texB,bumpScale:.01,shininess:5}),
   G:new THREE.MeshPhongMaterial({map:texG,shininess:70,specular:0x6688aa,emissive:0x0a1626,emissiveIntensity:.7}),
+  A:new THREE.MeshPhongMaterial({map:texA,bumpMap:texA,bumpScale:.018,shininess:5}),
+  P:new THREE.MeshPhongMaterial({map:texP,bumpMap:texP,bumpScale:.012,shininess:12,specular:0x3f241b}),
+  R:new THREE.MeshPhongMaterial({map:texR,bumpMap:texR,bumpScale:.025,shininess:16,specular:0x48554d}),
 };
 const boxGeo=new THREE.BoxGeometry(1,1,1);
 (function buildWalls(){
@@ -884,6 +1015,33 @@ function addPlant(x,z){const m2=new THREE.MeshPhongMaterial({map:plantTx,transpa
   for(let r=0;r<2;r++){const p=new THREE.Mesh(new THREE.PlaneGeometry(.45,.68),m2);p.position.set(x,.34,z);p.rotation.y=r*Math.PI/2+.4;scene.add(p);}}
 addPlant(13.5,3.45);addPlant(6.3,9.45);
 
+/* ---- 扩建区域摆设：钢琴、档案台、值班室与地下管线 ---- */
+function propBox(w,h,d,mat,x,y,z){const m2=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m2.position.set(x,y,z);m2.castShadow=m2.receiveShadow=true;scene.add(m2);return m2;}
+function addPiano(x,z){const gr=new THREE.Group();
+  const lacquer=new THREE.MeshPhongMaterial({color:0x22120f,shininess:72,specular:0x6c4938});
+  const ivory=new THREE.MeshPhongMaterial({color:0xd4cdb8,shininess:38});
+  const black=new THREE.MeshPhongMaterial({color:0x090807,shininess:28});
+  const body=new THREE.Mesh(new THREE.BoxGeometry(1.05,.62,.34),lacquer);body.position.set(0,.48,.18);gr.add(body);
+  const keys=new THREE.Mesh(new THREE.BoxGeometry(1.02,.075,.34),ivory);keys.position.set(0,.43,-.17);gr.add(keys);
+  for(let i=-5;i<=5;i++){const seam=new THREE.Mesh(new THREE.BoxGeometry(.012,.078,.34),black);seam.position.set(i*.085,.435,-.175);gr.add(seam);}
+  [-.34,.34].forEach(px=>{const leg=new THREE.Mesh(new THREE.BoxGeometry(.08,.43,.08),lacquer);leg.position.set(px,.215,.17);gr.add(leg);});
+  const bench=new THREE.Mesh(new THREE.BoxGeometry(.55,.08,.24),lacquer);bench.position.set(0,.25,-.72);gr.add(bench);
+  [-.2,.2].forEach(px=>{const leg=new THREE.Mesh(new THREE.BoxGeometry(.055,.25,.055),lacquer);leg.position.set(px,.125,-.72);gr.add(leg);});
+  gr.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true;}});gr.position.set(x,0,z);scene.add(gr);}
+addPiano(26,4.25);
+addDesk(3.25,16.55,.05);addDesk(25.6,12.65,-.08);
+const paperMat=new THREE.MeshPhongMaterial({color:0x8d7955,shininess:2});
+[[25.25,12.85],[25.48,12.88],[25.72,12.84]].forEach((p,i)=>propBox(.19,.035+i*.008,.24,paperMat,p[0],.43+i*.025,p[1]));
+const metal=new THREE.MeshPhongMaterial({color:0x4c5550,shininess:52,specular:0x7b8982});
+const rust=new THREE.MeshPhongMaterial({color:0x6e3e25,shininess:18});
+[[11.2,15.25,7.6],[11.2,17.35,6.8],[15.0,19.25,7.2]].forEach(p=>{
+  const pipe=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,p[2],10),metal);pipe.rotation.z=Math.PI/2;pipe.position.set(p[0]+p[2]/2,.82,p[1]);pipe.castShadow=true;scene.add(pipe);
+  const valve=new THREE.Mesh(new THREE.TorusGeometry(.12,.025,7,14),rust);valve.rotation.y=Math.PI/2;valve.position.set(p[0]+.35,.72,p[1]);scene.add(valve);});
+const waterMat=new THREE.MeshPhongMaterial({color:0x304b49,transparent:true,opacity:.36,shininess:110,specular:0x91b8ad,depthWrite:false});
+const water=new THREE.Mesh(new THREE.PlaneGeometry(17.1,1.65),waterMat);water.rotation.x=-Math.PI/2;water.position.set(9.5,.012,20);scene.add(water);
+const altar=propBox(.62,.35,.34,woodDark,4,.175,20.2);propBox(.42,.035,.25,paperMat,4,.37,20.2);
+const frame=propBox(.28,.24,.025,rust,4,.53,20.34);frame.rotation.x=-.12;
+
 /* ---- 灯光 ---- */
 scene.add(new THREE.AmbientLight(0x1c2822,0.55));
 scene.add(new THREE.HemisphereLight(0x28383e,0x0e130e,0.45));
@@ -894,7 +1052,8 @@ flash.position.set(0,0,0);camera.add(flash);
 const ftgt=new THREE.Object3D();ftgt.position.set(0,-0.08,-1);camera.add(ftgt);flash.target=ftgt;
 const lampMat=new THREE.MeshPhongMaterial({color:0x9aa694,emissive:0xd8f0cc,emissiveIntensity:.9});
 const LAMPS=[];
-[[7.5,2.2],[12.5,2.2],[3.5,8.7],[9.5,8.7],[16.5,8.7],[8,11.5],[2.5,2.4],[17.4,2.4]].forEach(p=>{
+[[7.5,2.2],[12.5,2.2],[3.5,8.7],[9.5,8.7],[16.5,8.7],[8,11.5],[2.5,2.4],[17.4,2.4],
+ [25.5,4],[25.5,8],[26,13],[3.5,16],[13.5,16],[15.5,20]].forEach(p=>{
   const bar=new THREE.Mesh(new THREE.BoxGeometry(.55,.04,.14),lampMat.clone());bar.position.set(p[0],.985,p[1]);scene.add(bar);
   const li=new THREE.PointLight(0x9fd6a8,.45,4.2,1.6);li.position.set(p[0],.9,p[1]);scene.add(li);
   LAMPS.push({bar,li,ph:Math.random()*7});});
@@ -1046,7 +1205,7 @@ function initCanvasRenderer(){
   let W=1,H=1,DPR=1;
   const FOV=Math.PI/3,MAX_DIST=14;
   const ghostImg=new Image();ghostImg.src='assets/ghost/ghost-bride-sprite.webp';
-  const COLORS={W:[135,134,116],T:[98,119,114],L:[66,79,88],D:[83,59,37],B:[61,83,65],G:[34,50,68]};
+  const COLORS={W:[135,134,116],T:[98,119,114],L:[66,79,88],D:[83,59,37],B:[61,83,65],G:[34,50,68],A:[92,78,55],P:[91,53,45],R:[69,75,67]};
   const resize2D=()=>{
     W=Math.max(1,innerWidth);H=Math.max(1,innerHeight);DPR=Math.min(devicePixelRatio||1,1.5);
     cv.width=Math.floor(W*DPR);cv.height=Math.floor(H*DPR);
@@ -1193,7 +1352,7 @@ function beginGame(online=false){
     [{label:'开始探索',act:closePanel}]);
 }
 $('startBtn').onclick=()=>{if(window.MULTI&&MULTI.hasSession()){MULTI.showPanel(true);return;}beginGame(false);};
-if(window.MULTI)MULTI.init({S,P,GHOST,HIDE,beginGame,refreshSharedUi,jumpscare,endGame});
+if(window.MULTI)MULTI.init({S,P,GHOST,HIDE,MW,MH,beginGame,refreshSharedUi,jumpscare,endGame});
 </script>
 <script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");</script>
 </body>
