@@ -1,4 +1,4 @@
-const CACHE='di13jie-v6';
+const CACHE='di13jie-v7';
 const CORE=['.','index.html','multiplayer.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png',
   'assets/ghost/ghost-bride-sprite.webp','assets/ghost/ghost-bride-scare.webp',
   'https://raw.githubusercontent.com/yzouj0031-hub/bgm/main/Death%20Note%20-%20Yoshihisa%20Hirano%20And%20Hideki%20Taniuchi%20-%20L%27s%20Theme%20B.mp3',

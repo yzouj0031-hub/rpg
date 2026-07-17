@@ -33,6 +33,8 @@
   };
   const safeText = (value, fallback = '') => String(value || fallback).replace(/[<>\r\n]/g, '').trim();
   const connected = () => !!(NET.active && NET.conn && NET.conn.open);
+  const mapWidth = () => clamp(NET.ctx && NET.ctx.MW, 1, 256, 20);
+  const mapHeight = () => clamp(NET.ctx && NET.ctx.MH, 1, 256, 14);
 
   function randomRoomCode() {
     const bytes = new Uint8Array(6);
@@ -156,15 +158,15 @@
       : clamp(world.minute, 0, 180, ctx.S.minute);
 
     if (world.ghost && typeof world.ghost === 'object' && !ctx.HIDE.on) {
-      ctx.GHOST.x = clamp(world.ghost.x, 0, 20, ctx.GHOST.x);
-      ctx.GHOST.y = clamp(world.ghost.y, 0, 14, ctx.GHOST.y);
+      ctx.GHOST.x = clamp(world.ghost.x, 0, mapWidth(), ctx.GHOST.x);
+      ctx.GHOST.y = clamp(world.ghost.y, 0, mapHeight(), ctx.GHOST.y);
       ctx.GHOST.on = !!world.ghost.on;
       ctx.GHOST.mode = safeText(world.ghost.mode, 'none').slice(0, 12) || 'none';
       ctx.GHOST.t = clamp(world.ghost.t, 0, 30, 0);
     }
 
     ctx.refreshSharedUi();
-    const labels = { note: '纸条', battery: '电池', charm: '平安符', photo: '旧照片', umbrella: '旧伞' };
+    const labels = { note: '纸条', battery: '电池', keycard: '旧门禁卡', fuse: '陶瓷保险丝', archive: '事故档案', cassette: '旧磁带', ribbon: '红头绳', charm: '平安符', photo: '旧照片', umbrella: '旧伞' };
     const found = Object.keys(before).find(key => !before[key] && ctx.S.has[key]);
     if (found && !NET.host) showHint(`队友找到了：${labels[found] || '关键线索'}`);
   }
@@ -187,8 +189,8 @@
   function updateRemotePlayer(data) {
     if (!data || typeof data !== 'object') return;
     NET.remote.name = safeText(data.name, NET.remote.name).slice(0, 10) || '队友';
-    NET.remote.tx = clamp(data.x, 0, 20, NET.remote.tx);
-    NET.remote.ty = clamp(data.y, 0, 14, NET.remote.ty);
+    NET.remote.tx = clamp(data.x, 0, mapWidth(), NET.remote.tx);
+    NET.remote.ty = clamp(data.y, 0, mapHeight(), NET.remote.ty);
     NET.remote.ta = clamp(data.a, -Math.PI * 20, Math.PI * 20, NET.remote.ta);
     NET.remote.mode = safeText(data.mode, 'title').slice(0, 12);
     NET.remote.hidden = !!data.hidden;
