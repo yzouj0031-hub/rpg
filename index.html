@@ -48,6 +48,11 @@ body.playing #musicToggle{display:flex;}
   color:#7d8c84;font-size:9px;letter-spacing:.1em;text-align:right;opacity:0;transform:translateY(-3px);
   transition:opacity .35s,transform .35s;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #trackToast.on{opacity:.78;transform:translateY(0);}
+#netBadge{position:fixed;z-index:14;top:calc(10px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+  display:none;max-width:44vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;appearance:none;
+  border:1px solid rgba(143,179,160,.32);border-radius:18px;background:rgba(5,8,7,.78);color:#8fae94;
+  padding:6px 11px;font:300 10px/1 'Noto Sans SC',sans-serif;letter-spacing:.1em;touch-action:manipulation;}
+#netBadge.on{display:block;}#netBadge[data-state="error"]{color:#c56b61;border-color:#6c2c27;}
 
 /* 摇杆 */
 #stickZone{position:fixed;z-index:9;left:0;top:0;bottom:0;width:42%;}
@@ -112,6 +117,35 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 .screen .story{margin-top:24px;max-width:420px;font-size:14px;line-height:2.3;color:#a29d90;text-align:left;white-space:pre-wrap;}
 .screen .btn{margin-top:40px;appearance:none;border:1px solid var(--dim);background:transparent;color:var(--bone);font-family:'Noto Serif SC',serif;font-size:15px;letter-spacing:.5em;padding:14px 34px 14px 40px;border-radius:2px;}
 .screen .btn:active{border-color:var(--phosphor);color:var(--phosphor);}
+.screen .btn:disabled{opacity:.35;}
+#onlineBtn{margin-top:12px;color:var(--phosphor);border-color:#263d32;}
+#onlinePanel{position:fixed;inset:0;z-index:75;display:none;align-items:center;justify-content:center;
+  background:rgba(2,4,3,.95);padding:18px;}
+#onlinePanel.on{display:flex;}
+.online-card{position:relative;width:min(520px,94vw);border:1px solid #26332d;background:#080d0b;
+  box-shadow:0 18px 80px rgba(0,0,0,.72);padding:24px 24px 20px;text-align:left;}
+.online-card h2{font:700 24px/1.2 'Noto Serif SC',serif;letter-spacing:.28em;color:var(--bone);text-align:center;}
+.online-card .online-sub{margin:10px 0 17px;text-align:center;color:#65716b;font-size:11px;letter-spacing:.12em;line-height:1.8;}
+#onlineClose{position:absolute;right:10px;top:9px;width:34px;height:34px;border:0;background:transparent;color:#6d7772;
+  font-size:22px;touch-action:manipulation;}
+.online-label{display:block;margin:10px 0 6px;color:#807b70;font-size:10px;letter-spacing:.18em;}
+.online-input{width:100%;height:40px;border:1px solid #28342f;background:#050807;color:var(--bone);border-radius:2px;
+  padding:0 12px;outline:none;font:400 14px/1 'Noto Sans SC',sans-serif;letter-spacing:.12em;touch-action:auto;user-select:text;-webkit-user-select:text;}
+.online-input:focus{border-color:#587262;}
+.online-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+.online-action{height:40px;border:1px solid #2e4438;background:#0d1712;color:#aeb9b1;border-radius:2px;
+  font:400 12px/1 'Noto Sans SC',sans-serif;letter-spacing:.15em;touch-action:manipulation;}
+.online-action:active{border-color:var(--phosphor);color:var(--phosphor);}
+.online-action.danger{border-color:#45201d;color:#a86a63;background:#160b0a;}
+#roomShare{display:none;margin:14px 0 4px;padding:12px;border:1px dashed #3c4d45;text-align:center;}
+#roomShare.on{display:block;}#roomShare small{display:block;color:#68736d;font-size:10px;letter-spacing:.16em;}
+#roomCode{display:block;margin:5px 0;color:var(--phosphor);font:700 26px/1.2 monospace;letter-spacing:.22em;}
+#copyRoomBtn{border:0;background:transparent;color:#9b927b;font-size:10px;letter-spacing:.14em;touch-action:manipulation;}
+#onlineStatus{min-height:20px;margin-top:13px;text-align:center;color:#6f7974;font-size:11px;letter-spacing:.1em;line-height:1.6;}
+#onlineStatus[data-state="ok"]{color:#8fae94;}#onlineStatus[data-state="error"]{color:#c56b61;}#onlineStatus[data-state="busy"]{color:#b39a63;}
+#onlineStartBtn{display:none;width:100%;margin-top:10px;}#onlineStartBtn.on{display:block;}#onlineStartBtn:disabled{opacity:.35;}
+#onlineLeaveBtn{width:100%;margin-top:10px;height:34px;border:0;background:transparent;color:#68504c;font-size:10px;letter-spacing:.15em;touch-action:manipulation;}
+@media (max-height:430px){.online-card{padding:14px 18px 12px}.online-card h2{font-size:20px}.online-card .online-sub{margin:5px 0 9px}.online-label{margin-top:6px}.online-input,.online-action{height:36px}#roomShare{margin:8px 0 2px;padding:6px}#roomCode{font-size:21px}}
 #endTitle.dead h1{color:var(--blood-hot);}
 .endcoll{margin-top:26px;font-size:11px;letter-spacing:.18em;color:#5c584e;line-height:2.2;text-align:center;max-width:420px;}
 #slats,#deskShade{position:fixed;inset:0;pointer-events:none;z-index:40;display:none;}
@@ -147,6 +181,7 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 <div id="inv"></div>
 <button id="musicToggle" type="button" aria-label="关闭配乐" aria-pressed="true"><span class="note" aria-hidden="true">♪</span><span id="musicState">配乐</span></button>
 <div id="trackToast" role="status" aria-live="polite"></div>
+<button id="netBadge" type="button" aria-label="查看联机状态"></button>
 
 <div id="stickZone"><div id="stick"><div id="knob"></div></div></div>
 <div id="lookZone"></div>
@@ -177,8 +212,28 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 电脑可用 WSAD 移动 + 鼠标拖动转向。
 走近发光的东西，会出现「调查」按钮。</div>
   <button class="btn" id="startBtn">进 入 校 园</button>
+  <button class="btn" id="onlineBtn">双 人 联 机</button>
   <div class="endcoll" id="titleColl"></div>
   <div class="bgmpick"><span id="bgmPickBtn">♪ 导入本地音乐作 BGM（仅本机播放，不会上传）</span><input type="file" id="bgmFile" accept="audio/*"></div>
+</div>
+
+<div id="onlinePanel" role="dialog" aria-modal="true" aria-labelledby="onlineTitle">
+  <div class="online-card">
+    <button id="onlineClose" type="button" aria-label="关闭">×</button>
+    <h2 id="onlineTitle">双 人 联 机</h2>
+    <div class="online-sub">两台设备都联网 · 房间码加入 · 不需要账号</div>
+    <label class="online-label" for="onlineName">你的称呼</label>
+    <input class="online-input" id="onlineName" maxlength="10" value="同学" autocomplete="nickname">
+    <div class="online-row">
+      <button class="online-action" id="createRoomBtn" type="button">创 建 房 间</button>
+      <input class="online-input" id="joinCode" maxlength="6" placeholder="6 位房间码" inputmode="text" autocomplete="off">
+    </div>
+    <button class="online-action" id="joinRoomBtn" type="button" style="width:100%;margin-top:10px">加 入 房 间</button>
+    <div id="roomShare"><small>把这个房间码发给同学</small><strong id="roomCode">------</strong><button id="copyRoomBtn" type="button">复制房间码</button></div>
+    <div id="onlineStatus" role="status" aria-live="polite">创建房间，或输入同学发来的房间码</div>
+    <button class="online-action" id="onlineStartBtn" type="button" disabled>等 待 同 学 加 入</button>
+    <button id="onlineLeaveBtn" type="button">退 出 当 前 联 机</button>
+  </div>
 </div>
 
 <div class="screen" id="endTitle">
@@ -189,6 +244,8 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="multiplayer.js"></script>
 <script>
 /* ============ 音频（WebAudio 合成） ============ */
 let AC=null,droneNodes=[],heartTimer=null,audioUnavailable=false;
@@ -385,8 +442,11 @@ const P={x:2.5,y:2.5,a:0};
 const GHOST={x:0,y:0,on:false,mode:'none',t:0};
 const $=id=>document.getElementById(id);
 function addFear(n){S.fear=Math.max(0,Math.min(100,S.fear+n));$('fearfill').style.width=S.fear+'%';$('grain').style.opacity=(0.07+S.fear/100*0.22).toFixed(2);$('vig').style.opacity=(0.4+S.fear/100*0.4).toFixed(2);heart(S.fear>=60);if(S.fear>=100)endGame('mad');}
-function tick(n){S.minute+=n;let m=S.minute,late=m>=60;if(late)m-=60;const c=$('clock');c.textContent=(late?'00':'23')+':'+String(m).padStart(2,'0');if(late)c.classList.add('late');}
+function renderClock(){let m=S.minute,late=m>=60;if(late)m-=60;const c=$('clock');c.textContent=(late?'00':'23')+':'+String(m).padStart(2,'0');c.classList.toggle('late',late);}
+function tick(n){S.minute+=n;renderClock();}
 function inv(){const el=$('inv');el.innerHTML='';const names={note:'纸条',battery:'电池',charm:'平安符',photo:'旧照片',umbrella:'旧伞'};for(const k in S.has)if(S.has[k]){const t=document.createElement('span');t.className='tag';t.textContent=names[k];el.appendChild(t);}}
+function refreshSharedUi(){renderClock();inv();}
+function shareWorld(reason){if(window.MULTI)MULTI.worldChanged(reason);}
 
 /* ============ 交互物 ============ */
 const ITEMS=[
@@ -413,13 +473,13 @@ function say(html,choices){
 }
 function closePanel(){panelOpen=false;$('panel').classList.remove('on');}
 
-function noteAct(){S.has.note=true;S.flags.codeKnown=S.flags.readWall;inv();tick(1);
+function noteAct(){S.has.note=true;S.flags.codeKnown=S.flags.readWall;inv();tick(1);shareWorld('note');
   say(`纸条上的字迹很急：\n<span class="paper">「我先走了。别等到十二点。\n如果只能走后山的桥——去楼下我柜子里拿那个东西。\n密码是'她走的那一年'。」</span>\n\n她的柜子……在储物柜区。`,[{label:'收起纸条',act:closePanel}]);}
-function wallAct(){S.flags.readWall=true;tick(1);addFear(6);
+function wallAct(){S.flags.readWall=true;tick(1);addFear(6);shareWorld('wall');
   say(`「本校创立于 1963 年。」\n「后山石桥建于 1958 年，共十二阶。」\n最角落有一张剪报，标题被撕掉了半边——\n<span class="bad">「1987 年 · 雨夜 · 女学生……坠……」</span>\n剪报下有人用笔写了一行小字：<span class="paper">「不要数完。」</span>`,[{label:'后退一步',act:closePanel}]);}
-function sinkAct(){S.has.battery=true;inv();tick(1);addFear(4);
+function sinkAct(){S.has.battery=true;inv();tick(1);addFear(4);shareWorld('battery');
   say(`水槽里的水是凉的，凉得不像自来水。\n你摸出两节<span class="em">电池</span>，装进手电——\n<span class="em">光柱一下子亮了很多。</span>\n是谁把电池泡在这里的？`,[{label:'离开水槽',act:closePanel}]);}
-function mirrorAct(){S.flags.mirror++;
+function mirrorAct(){S.flags.mirror++;shareWorld('mirror');
   if(S.flags.mirror===1){sfxWhisper();addFear(14);
     say(`你用手抹开镜子上的雾。\n镜子里是你自己，疲惫，眼下发青。\n但你身后靠墙的位置——\n<span class="bad">好像立着一个比阴影更深的东西。</span>\n你猛地回头。什么都没有。`,
       [{label:'再看一眼镜子',cls:'danger',act:mirrorAct},{label:'离开这里',act:closePanel}]);
@@ -427,7 +487,7 @@ function mirrorAct(){S.flags.mirror++;
     setTimeout(()=>jumpscare(()=>endGame('mirror')),900);}}
 function lockerAct(){
   if(!S.has.note){say(`一排铁皮储物柜，其中一个挂着<span class="em">四位数密码锁</span>。\n你不知道是谁的柜子，也不知道密码。`,[{label:'离开',act:closePanel}]);return;}
-  const tryCode=(ok)=>()=>{if(ok){S.flags.lockerOpen=true;S.has.charm=true;S.has.photo=true;inv();sfxThunder();addFear(8);tick(2);
+  const tryCode=(ok)=>()=>{if(ok){S.flags.lockerOpen=true;S.has.charm=true;S.has.photo=true;inv();sfxThunder();addFear(8);tick(2);shareWorld('locker');
       say(`「咔哒。」锁开了。\n柜子里只有两样东西：\n一张对折的<span class="paper">平安符</span>，边缘焦黑，像被火燎过。\n一张<span class="em">旧照片</span>：黑白的，拍的是后山那座桥。\n你数了数照片里的台阶——<span class="bad">十三阶。最上面站着一个白色的影子。</span>\n照片背面有一行褪色的钢笔字：<span class="paper">「林晚 · 1987.6」</span>\n\n身后的走廊尽头，声控灯「啪」的一声，灭了。\n<span class="bad">有什么东西，正在黑暗里朝你走过来。</span>`,
         [{label:'跑！去楼梯间的后门！',cls:'danger',act:()=>{closePanel();startChase();}}]);
     }else{sfxWhisper();addFear(7);
@@ -440,7 +500,7 @@ function umbAct(){
   if(!S.has.photo){addFear(5);sfxWhisper();tick(1);
     say(`楼梯间的墙角，立着一把黑布伞。\n伞骨断了一根，伞面上的水珠还没干。\n——可今晚，除了你，没有别人留下来。\n\n伞柄上刻着一行快磨平的小字：\n<span class="paper">「高三(2)班 · 林晚」</span>\n这所学校……有过高中部吗？`,
       [{label:'总觉得，不该动它',act:closePanel}]);return;}
-  S.has.umbrella=true;inv();tick(1);addFear(4);sfxWhisper();
+  S.has.umbrella=true;inv();tick(1);addFear(4);sfxWhisper();shareWorld('umbrella');
   say(`你又回到了这把伞前。\n照片背面那行钢笔字，在你脑子里一闪：\n<span class="paper">「林晚 · 1987.6」</span>\n\n是同一个名字。\n三十九年前的那个雨夜，有人到最后，\n也没等到这把伞。\n\n你把伞捡了起来。\n伞很轻。轻得像一句没说完的话。`,
     [{label:'带上它',act:closePanel}]);}
 function exitAct(){
@@ -453,14 +513,14 @@ function doorSequence(){
   GHOST.on=true;GHOST.mode='chase';GHOST.x=9.2;GHOST.y=5.4;
   playMusic('danger',600);
   sfxScream();addFear(14);if(navigator.vibrate)navigator.vibrate([80,50,80]);
-  const ht=$('hint');ht.textContent='门锁住了！！狂点「撞 门」！！';ht.style.opacity=1;ht.style.color='#c53a2e';}
+  const ht=$('hint');ht.textContent='门锁住了！！狂点「撞 门」！！';ht.style.opacity=1;ht.style.color='#c53a2e';shareWorld('door-sequence');}
 function doorHit(){
   S.doorHits++;sfxStep(.7);if(navigator.vibrate)navigator.vibrate(40);
-  if(S.doorHits>=6){S.flags.doorSeq=false;const ht=$('hint');ht.style.opacity=0;escapeToBridge();}}
+  shareWorld('door-hit');if(S.doorHits>=6){S.flags.doorSeq=false;const ht=$('hint');ht.style.opacity=0;escapeToBridge();}}
 
 /* ============ 追逐战 ============ */
 function startChase(){S.flags.chase=true;GHOST.on=true;GHOST.mode='chase';GHOST.x=18.3;GHOST.y=8.5;playMusic('danger',600);addFear(12);sfxScream();
-  if(navigator.vibrate)navigator.vibrate([60,40,60]);}
+  if(navigator.vibrate)navigator.vibrate([60,40,60]);shareWorld('chase');}
 
 /* ============ 躲藏系统：储物柜 & 桌底 ============ */
 const HIDE={on:false,kind:null,phase:0,t:0,breath:1,hold:false,expose:0,gx:0,gy:0,lx:0,ly:0};
@@ -476,19 +536,19 @@ function startHide(kind){
   GHOST.on=true;GHOST.mode='seek';heart(true);sfxWhisper();addFear(8);
   const ht=$('hint');
   ht.textContent=kind==='locker'?'柜门缝外，脚步声近了……按住「屏住呼吸」！':'裙摆就在课桌旁边……按住「屏住呼吸」！';
-  ht.style.opacity=1;ht.style.color='#c53a2e';}
+  ht.style.opacity=1;ht.style.color='#c53a2e';shareWorld('hide');}
 function hideCleanup(){HIDE.on=false;
   $('hideUI').classList.remove('on');$('slats').classList.remove('on');$('deskShade').classList.remove('on');
   $('holdBtn').classList.remove('held');}
 function hideFail(){const key=HIDE.kind==='locker'?'found':'under';hideCleanup();
-  GHOST.on=false;GHOST.mode='none';jumpscare(()=>endGame(key));}
+  GHOST.on=false;GHOST.mode='none';shareWorld('hide-fail');jumpscare(()=>endGame(key));}
 function hideEnd(){hideCleanup();
   GHOST.on=false;GHOST.mode='none';heart(S.fear>=60);addFear(10);
   playMusic(HIDE.kind==='desk'?'explore':'danger',700);
   const ht=$('hint');ht.style.color='';
   if(HIDE.kind==='desk'){ht.textContent='脚步声远了。走廊……好像空了。';}
   else{ht.textContent='她走远了。快！趁现在去楼梯间的后门！';}
-  ht.style.opacity=1;setTimeout(()=>ht.style.opacity=0,3000);}
+  ht.style.opacity=1;setTimeout(()=>ht.style.opacity=0,3000);shareWorld('hide-end');}
 function hideUpdate(dt){
   HIDE.t+=dt;
   if(HIDE.phase===0){ /* 她在靠近 */
@@ -512,7 +572,7 @@ function hideUpdate(dt){
   }
   const bf=$('breathFill');bf.style.width=(HIDE.breath*100)+'%';
   bf.style.background=HIDE.breath<.3?'#c53a2e':(HIDE.expose>0.25?'#c9a13a':'#8fae94');}
-function escapeToBridge(){closePanel();GHOST.on=false;GHOST.mode='none';S.mode='bridge';playMusic('bridge',1000);$('rain').classList.add('on');sfxThunder();
+function escapeToBridge(){closePanel();GHOST.on=false;GHOST.mode='none';S.mode='bridge';playMusic('bridge',1000);$('rain').classList.add('on');sfxThunder();shareWorld('bridge');
   say(`你撞开后门，冲进雨里。\n身后的脚步声，在门口停住了。\n\n手电的光柱里全是雨。旧桥就在眼前，石头的，窄得只容一个人走。\n保安的话在你耳边响：<span class="em">桥只有十二阶。</span>`+(S.has.note?`\n纸条上写：<span class="paper">不要数完。</span>`:'')+`\n\n你没有别的路了。`,
     [{label:'踏上第一阶',cls:'danger',act:()=>{closePanel();startBridge();}}]);}
 
@@ -634,14 +694,16 @@ function update(dt){
   const vx=(ca*f - sa*s)*sp, vy=(sa*f + ca*s)*sp;
   if(vx||vy){tryMove(P.x+vx,P.y+vy);walkT+=dt;if(walkT>0.42){walkT=0;sfxStep(.18);}}
   $('zone').textContent=zoneName(P.x,P.y);
+  const authority=!window.MULTI||MULTI.isAuthority();
   /* 走廊封路事件：拿到纸条后第一次往东走 */
-  if(!S.flags.deskEvent&&S.has.note&&GHOST.mode==='none'&&P.y<3.6&&P.x>7.2&&P.x<11.5){
+  if(authority&&!S.flags.deskEvent&&S.has.note&&GHOST.mode==='none'&&P.y<3.6&&P.x>7.2&&P.x<11.5){
     S.flags.deskEvent=true;GHOST.on=true;GHOST.mode='block';GHOST.x=13.6;GHOST.y=2.1;
     playMusic('danger',500);
     sfxScream();addFear(16);if(navigator.vibrate)navigator.vibrate([90,60,90]);
     const ht=$('hint');ht.textContent='走廊尽头——是她！！回自习室，钻到桌子底下！！';
-    ht.style.opacity=1;ht.style.color='#c53a2e';heart(true);
+    ht.style.opacity=1;ht.style.color='#c53a2e';heart(true);shareWorld('desk-event');
   }
+  if(authority){
   // 随机氛围
   ambT-=dt;
   if(ambT<=0){ambT=10+Math.random()*14;
@@ -656,19 +718,22 @@ function update(dt){
   if(GHOST.on){
     if(GHOST.mode==='flash'){GHOST.t-=dt;if(GHOST.t<=0){GHOST.on=false;GHOST.mode='none';}}
     else if(GHOST.mode==='chase'){
-      const dx=P.x-GHOST.x,dy=P.y-GHOST.y,d=Math.hypot(dx,dy);
+      const target=window.MULTI?MULTI.closestTarget(P):{x:P.x,y:P.y,remote:false};
+      const dx=target.x-GHOST.x,dy=target.y-GHOST.y,d=Math.hypot(dx,dy);
       const gs=2.35*dt;
-      tryGhost(GHOST.x+dx/d*gs,GHOST.y+dy/d*gs);
-      if(d<0.55){jumpscare(()=>endGame('caught'));GHOST.on=false;GHOST.mode='none';}
+      if(d>.001)tryGhost(GHOST.x+dx/d*gs,GHOST.y+dy/d*gs);
+      if(d<0.55){if(target.remote&&window.MULTI)MULTI.catchRemote();else jumpscare(()=>endGame('caught'));GHOST.on=false;GHOST.mode='none';shareWorld('caught');}
       if(Math.random()<dt*2)sfxStep(.3);
     }
     else if(GHOST.mode==='block'){
-      const dx=P.x-GHOST.x,dy=P.y-GHOST.y,d=Math.hypot(dx,dy);
+      const target=window.MULTI?MULTI.closestTarget(P):{x:P.x,y:P.y,remote:false};
+      const dx=target.x-GHOST.x,dy=target.y-GHOST.y,d=Math.hypot(dx,dy);
       const gs=1.25*dt;
-      tryGhost(GHOST.x+dx/d*gs,GHOST.y+dy/d*gs);
-      if(d<0.55){jumpscare(()=>endGame('caught'));GHOST.on=false;GHOST.mode='none';}
+      if(d>.001)tryGhost(GHOST.x+dx/d*gs,GHOST.y+dy/d*gs);
+      if(d<0.55){if(target.remote&&window.MULTI)MULTI.catchRemote();else jumpscare(()=>endGame('caught'));GHOST.on=false;GHOST.mode='none';shareWorld('caught');}
       if(Math.random()<dt*1.6)sfxStep(.28);
     }
+  }
   }
   checkNear();
 }
@@ -693,6 +758,7 @@ const scene=new THREE.Scene();
 scene.fog=new THREE.FogExp2(0x020404,0.12);
 const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.05,60);
 camera.rotation.order='YXZ';scene.add(camera);
+if(window.MULTI)MULTI.bindThree(scene,THREE);
 const POST={};
 function resize(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
   if(POST.rt){const pr=renderer.getPixelRatio();POST.rt.setSize(Math.floor(innerWidth*pr),Math.floor(innerHeight*pr));}}
@@ -1004,6 +1070,12 @@ function initCanvasRenderer(){
     const ri=Math.max(0,Math.min(rays-1,Math.floor(sx/W*rays)));
     if(dist>depth[ri]+.22)return;
 
+    if(obj.player&&window.MULTI){
+      const size=Math.min(H*.58,H*.78/Math.max(.5,dist));
+      const base=H*.5+size*.5;
+      MULTI.drawCanvasPlayer(ctx,sx,base,size,obj);return;
+    }
+
     if(obj.ghost){
       const size=Math.min(H*.82,H*1.08/Math.max(.45,dist));
       const base=H*.5+size*.46;
@@ -1063,6 +1135,8 @@ function initCanvasRenderer(){
     const sprites=[];
     ITEMS.forEach(it=>{if(!it.done())sprites.push({...it,ghost:false,d:Math.hypot(it.x-P.x,it.y-P.y)});});
     if(GHOST.on)sprites.push({x:GHOST.x,y:GHOST.y,ghost:true,d:Math.hypot(GHOST.x-P.x,GHOST.y-P.y)});
+    const teammate=window.MULTI&&MULTI.remoteSprite();
+    if(teammate)sprites.push({...teammate,d:Math.hypot(teammate.x-P.x,teammate.y-P.y)});
     sprites.sort((a,b)=>b.d-a.d).forEach(o=>drawWorldSprite(o,depth,rays,t));
 
     const radius=S.has.battery?.74:.56;
@@ -1090,6 +1164,7 @@ try{
 let lastT=0;
 function loop(t){const dt=Math.min(0.05,(t-lastT)/1000||0.016);lastT=t;
   if(S.mode==='play'){update(dt);renderFrame(t);}
+  if(window.MULTI)MULTI.update(dt);
   requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
 
@@ -1100,7 +1175,7 @@ $('bgmFile').onchange=e=>{
   const f=e.target.files&&e.target.files[0];if(!f)return;
   selectCustomMusic(f);};
 $('musicToggle').onclick=handleMusicToggle;syncMusicButton();
-$('startBtn').onclick=()=>{
+function beginGame(online=false){
   ac();playMusic('explore',700);startDrone();sfxClick();
   if(BGM&&BGM.master)BGM.master.gain.value=MUSIC.custom ? .5 : .65;
   document.body.classList.add('playing');
@@ -1109,11 +1184,16 @@ $('startBtn').onclick=()=>{
     if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('landscape').catch(()=>{});
   }).catch(()=>{});
   $('titleScreen').classList.remove('on');
-  S.mode='play';inv();
+  S.mode='play';refreshSharedUi();
   setTimeout(()=>{$('hint').style.opacity=0;},6000);
-  say(`日光灯管嗡嗡作响。整层楼只剩你一个人。\n手机没有信号，只剩 <span class="em">17%</span> 的电。\n你抓起抽屉里那支旧手电——还有点电，光很弱。\n\n桌上，压着一张同学留下的<span class="paper">纸条</span>。`,
+  const opening=online&&window.MULTI&&MULTI.isConnected()
+    ? `日光灯管嗡嗡作响。你和<span class="em">${MULTI.remoteName()}</span>一起留在了这层楼。\n手机信号时断时续，只剩 <span class="em">17%</span> 的电。\n你们各自抓起一支旧手电——光很弱。\n\n桌上，压着一张同学留下的<span class="paper">纸条</span>。`
+    : `日光灯管嗡嗡作响。整层楼只剩你一个人。\n手机没有信号，只剩 <span class="em">17%</span> 的电。\n你抓起抽屉里那支旧手电——还有点电，光很弱。\n\n桌上，压着一张同学留下的<span class="paper">纸条</span>。`;
+  say(opening,
     [{label:'开始探索',act:closePanel}]);
-};
+}
+$('startBtn').onclick=()=>{if(window.MULTI&&MULTI.hasSession()){MULTI.showPanel(true);return;}beginGame(false);};
+if(window.MULTI)MULTI.init({S,P,GHOST,HIDE,beginGame,refreshSharedUi,jumpscare,endGame});
 </script>
 <script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");</script>
 </body>
