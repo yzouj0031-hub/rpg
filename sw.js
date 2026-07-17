@@ -1,4 +1,4 @@
-const CACHE='di13jie-v2';
+const CACHE='di13jie-v3';
 const CORE=['.','index.html','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));});
