@@ -101,6 +101,7 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 .screen .btn{margin-top:40px;appearance:none;border:1px solid var(--dim);background:transparent;color:var(--bone);font-family:'Noto Serif SC',serif;font-size:15px;letter-spacing:.5em;padding:14px 34px 14px 40px;border-radius:2px;}
 .screen .btn:active{border-color:var(--phosphor);color:var(--phosphor);}
 #endTitle.dead h1{color:var(--blood-hot);}
+.endcoll{margin-top:26px;font-size:11px;letter-spacing:.18em;color:#5c584e;line-height:2.2;text-align:center;max-width:420px;}
 .endtag{margin-top:10px;font-size:12px;letter-spacing:.4em;color:var(--blood);}
 @media (prefers-reduced-motion: reduce){*{animation:none !important;}}
 </style>
@@ -161,11 +162,13 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 电脑可用 WSAD 移动 + 鼠标拖动转向。
 走近发光的东西，会出现「调查」按钮。</div>
   <button class="btn" id="startBtn">进 入 校 园</button>
+  <div class="endcoll" id="titleColl"></div>
 </div>
 
 <div class="screen" id="endTitle">
   <h1 id="endName"></h1><div class="endtag" id="endTag"></div>
   <div class="story" id="endStory"></div>
+  <div class="endcoll" id="endColl"></div>
   <button class="btn" onclick="location.reload()">再 来 一 次</button>
 </div>
 
@@ -228,14 +231,14 @@ function zoneName(x,y){
 }
 
 /* ============ 状态 ============ */
-const S={fear:0,minute:41,has:{note:false,battery:false,charm:false,photo:false},
+const S={fear:0,minute:41,has:{note:false,battery:false,charm:false,photo:false,umbrella:false},
   flags:{readWall:false,mirror:0,lockerOpen:false,chase:false,doorSeq:false,codeKnown:false},doorHits:0,mode:'title'};
 const P={x:2.5,y:2.5,a:0};
 const GHOST={x:0,y:0,on:false,mode:'none',t:0};
 const $=id=>document.getElementById(id);
 function addFear(n){S.fear=Math.max(0,Math.min(100,S.fear+n));$('fearfill').style.width=S.fear+'%';$('grain').style.opacity=(0.07+S.fear/100*0.22).toFixed(2);$('vig').style.opacity=(0.4+S.fear/100*0.4).toFixed(2);heart(S.fear>=60);if(S.fear>=100)endGame('mad');}
 function tick(n){S.minute+=n;let m=S.minute,late=m>=60;if(late)m-=60;const c=$('clock');c.textContent=(late?'00':'23')+':'+String(m).padStart(2,'0');if(late)c.classList.add('late');}
-function inv(){const el=$('inv');el.innerHTML='';const names={note:'纸条',battery:'电池',charm:'平安符',photo:'旧照片'};for(const k in S.has)if(S.has[k]){const t=document.createElement('span');t.className='tag';t.textContent=names[k];el.appendChild(t);}}
+function inv(){const el=$('inv');el.innerHTML='';const names={note:'纸条',battery:'电池',charm:'平安符',photo:'旧照片',umbrella:'旧伞'};for(const k in S.has)if(S.has[k]){const t=document.createElement('span');t.className='tag';t.textContent=names[k];el.appendChild(t);}}
 
 /* ============ 交互物 ============ */
 const ITEMS=[
@@ -244,6 +247,7 @@ const ITEMS=[
  {id:'sink',x:17.4,y:1.6,label:'水槽',done:()=>S.has.battery,act:sinkAct},
  {id:'mirror',x:18.3,y:3.3,label:'发黄的镜子',done:()=>S.flags.mirror>=2,act:mirrorAct},
  {id:'locker',x:15.5,y:8.6,label:'带锁的储物柜',done:()=>S.flags.lockerOpen,act:lockerAct},
+ {id:'umb',x:6.7,y:11.5,label:'墙角的旧伞',done:()=>S.has.umbrella,act:umbAct},
  {id:'exit',x:8,y:12.4,label:'后门 · 出去',done:()=>false,act:exitAct},
 ];
 
@@ -276,7 +280,7 @@ function mirrorAct(){S.flags.mirror++;
 function lockerAct(){
   if(!S.has.note){say(`一排铁皮储物柜，其中一个挂着<span class="em">四位数密码锁</span>。\n你不知道是谁的柜子，也不知道密码。`,[{label:'离开',act:closePanel}]);return;}
   const tryCode=(ok)=>()=>{if(ok){S.flags.lockerOpen=true;S.has.charm=true;S.has.photo=true;inv();sfxThunder();addFear(8);tick(2);
-      say(`「咔哒。」锁开了。\n柜子里只有两样东西：\n一张对折的<span class="paper">平安符</span>，边缘焦黑，像被火燎过。\n一张<span class="em">旧照片</span>：黑白的，拍的是后山那座桥。\n你数了数照片里的台阶——<span class="bad">十三阶。最上面站着一个白色的影子。</span>\n\n身后的走廊尽头，声控灯「啪」的一声，灭了。\n<span class="bad">有什么东西，正在黑暗里朝你走过来。</span>`,
+      say(`「咔哒。」锁开了。\n柜子里只有两样东西：\n一张对折的<span class="paper">平安符</span>，边缘焦黑，像被火燎过。\n一张<span class="em">旧照片</span>：黑白的，拍的是后山那座桥。\n你数了数照片里的台阶——<span class="bad">十三阶。最上面站着一个白色的影子。</span>\n照片背面有一行褪色的钢笔字：<span class="paper">「林晚 · 1987.6」</span>\n\n身后的走廊尽头，声控灯「啪」的一声，灭了。\n<span class="bad">有什么东西，正在黑暗里朝你走过来。</span>`,
         [{label:'跑！去楼梯间的后门！',cls:'danger',act:()=>{closePanel();startChase();}}]);
     }else{sfxWhisper();addFear(7);
       say(`锁没有动。\n但你听见柜子<span class="bad">里面</span>，传来一下很轻的、指甲划铁皮的声音。`,[{label:'……',act:lockerAct}]);}};
@@ -284,6 +288,13 @@ function lockerAct(){
   if(S.flags.readWall){cs.push({label:'输入 1958',act:tryCode(false)},{label:'输入 1963',act:tryCode(false)},{label:'输入 1987',act:tryCode(true)});}
   cs.push({label:'离开',act:closePanel});
   say(`她的柜子。<span class="em">四位数密码锁</span>。\n纸条上说：密码是<span class="paper">「她走的那一年」</span>。`+(S.flags.readWall?'':`\n……哪一年？校史墙上也许有线索。`),cs);}
+function umbAct(){
+  if(!S.has.photo){addFear(5);sfxWhisper();tick(1);
+    say(`楼梯间的墙角，立着一把黑布伞。\n伞骨断了一根，伞面上的水珠还没干。\n——可今晚，除了你，没有别人留下来。\n\n伞柄上刻着一行快磨平的小字：\n<span class="paper">「高三(2)班 · 林晚」</span>\n这所学校……有过高中部吗？`,
+      [{label:'总觉得，不该动它',act:closePanel}]);return;}
+  S.has.umbrella=true;inv();tick(1);addFear(4);sfxWhisper();
+  say(`你又回到了这把伞前。\n照片背面那行钢笔字，在你脑子里一闪：\n<span class="paper">「林晚 · 1987.6」</span>\n\n是同一个名字。\n三十九年前的那个雨夜，有人到最后，\n也没等到这把伞。\n\n你把伞捡了起来。\n伞很轻。轻得像一句没说完的话。`,
+    [{label:'带上它',act:closePanel}]);}
 function exitAct(){
   if(GHOST.mode==='chase'){escapeToBridge();return;}
   say(`后门就在眼前。门外，雨声。\n再往前，就是后山的<span class="em">旧桥</span>了。\n出去了，就没有回头路。`+(S.has.charm?'':`\n（你总觉得……好像还缺了点什么。）`),
@@ -320,6 +331,8 @@ function nextStep(){step++;if(step>13)return;sfxStep(.5);if(navigator.vibrate)na
     setTimeout(()=>{$('bridgeMode').classList.remove('on');
       say(`你明明数着，桥应该到头了。\n可你的脚，落在了<span class="bad">第十三阶</span>上。\n\n身后，有一只冰凉的手，<span class="bad">轻轻拍了拍你的肩膀。</span>\n一个很轻很轻的声音，贴着你的后颈：\n<span class="bad">「同学——借个伞好不好？」</span>`,[
         {label:'回头',cls:'danger',act:()=>{say('你回头了。',[]);setTimeout(()=>jumpscare(()=>endGame('look')),500);}},
+        {label:'把伞递到身后',cond:()=>S.has.umbrella,act:()=>endGame('umbrella')},
+        {label:'轻声说出她的名字',cond:()=>S.has.photo&&!S.has.umbrella,act:()=>endGame('name')},
         {label:'攥紧平安符，继续往前走',cond:()=>S.has.charm,act:()=>endGame('escape')},
         {label:'不回头，硬着头皮往前走',cond:()=>!S.has.charm,act:()=>{
           say(`你咬着牙迈出下一步。\n可那只手<span class="bad">扣住了你的肩膀</span>，指甲陷进肉里。\n你的脚，再也够不到地面了。`,[]);
@@ -331,7 +344,9 @@ function jumpscare(then,hold=1400){sfxScream();document.body.classList.add('shak
   if(navigator.vibrate)navigator.vibrate([80,40,120,40,200]);
   setTimeout(()=>{$('scare').classList.remove('on');document.body.classList.remove('shake');if(then)then();},hold);}
 const ENDS={
- escape:{name:'桥的那头',tag:'结局 · 生还',dead:false,story:`符纸在你掌心发烫。\n那只手停在了你的肩膀上，没有再用力。\n你一步、一步走下桥，始终没有回头。\n\n身后的雨声里，那个声音轻轻说了一句：\n「……谢谢你陪我数完。」\n\n第二天，你在校史馆查到：1987年的那个雨夜，\n有个女生在桥上等人送伞，等到了午夜。\n\n从此你再也没有在雨夜留过校。`},
+ umbrella:{name:'雨 停',tag:'真结局 · 还伞',dead:false,story:`你没有回头。\n你只是把那把旧伞，往身后递了过去。\n\n肩上的手松开了。\n伞被很轻、很轻地接住。\n\n「……等到了。」\n\n身后传来伞面撑开的声音。雨声忽然远了。\n你陪着那阵几乎听不见的脚步声，\n一起走完了第十三阶。\n落脚的时候，脚下是桥那头的泥土。\n你回头——旧桥安安静静立在雨里。\n十二阶。\n\n第二天，你把伞交到了失物招领处。\n登记簿最旧的那一页写着：\n「1987.6 · 林晚 · 黑布伞一把 · 未领」\n你在「未领」两个字上，替她轻轻画了一条横线。\n\n从那以后，雨夜的旧桥，\n再没有人数出过十三阶。`},
+ name:{name:'同 路',tag:'结局 · 纠缠',dead:false,story:`「林晚。」\n你听见自己的声音在雨里发抖。\n\n肩上的手，停住了。\n很久。久到雨都小了，\n那个声音才轻轻应了一声：\n「……原来，还有人记得。」\n\n你活着走下了桥。\n只是每年六月的那个雨夜，你都会梦见它。\n梦里你站在第一阶，身后有人轻声问：\n「今年，也陪我数一遍好不好？」\n\n你知道你会去的。\n年年都会。`},
+ escape:{name:'桥的那头',tag:'结局 · 生还',dead:false,story:`符纸在你掌心发烫。\n那只手停在了你的肩膀上，没有再用力。\n你一步、一步走下桥，始终没有回头。\n\n身后的雨声里，那个声音轻轻说了一句：\n「……谢谢你陪我数完。」\n\n第二天，你在校史馆查到：1987年的那个雨夜，\n有个女生在桥上等人送伞，等到了午夜。\n\n从此你再也没有在雨夜留过校。\n只是偶尔想起来：\n她要的，好像从来不是符。`},
  look:{name:'回 头',tag:'结局 · 失踪',dead:true,story:`不该回头的。\n监控里最后一次拍到你，是23:58，后门。\n后来去找你的人说，那座桥——\n明明只有十二阶。`},
  pulled:{name:'十三阶',tag:'结局 · 坠',dead:true,story:`溪水很浅，浅得根本淹不死人。\n可你就是没有再上来。\n打捞的人数了三遍台阶：十二阶。\n只是从那以后，雨夜路过的人说，\n桥上会有两个声音一起数数。`},
  mirror:{name:'镜中人',tag:'结局 · 失踪',dead:true,story:`第二天清晨，保洁阿姨推开洗手间的门。\n水龙头滴着水，镜子上的雾气很新。\n雾上有一行手写的字：\n「他替我留下了。」`},
@@ -340,7 +355,18 @@ const ENDS={
 };
 function endGame(key){stopDrone();heart(false);GHOST.on=false;S.mode='end';
   const e=ENDS[key];$('endName').textContent=e.name;$('endTag').textContent=e.tag;$('endStory').textContent=e.story;
+  try{
+    const seen=JSON.parse(localStorage.getItem('d13_ends')||'[]');
+    if(!seen.includes(key)){seen.push(key);localStorage.setItem('d13_ends',JSON.stringify(seen));}
+    const all=Object.keys(ENDS);
+    $('endColl').innerHTML='已见证的结局 '+seen.length+' / '+all.length+'<br>'+
+      all.map(k=>seen.includes(k)?'「'+ENDS[k].name.replace(/\s+/g,'')+'」':'「？？？」').join('  ');
+  }catch(err){}
   const sc=$('endTitle');sc.classList.toggle('dead',e.dead);sc.classList.add('on');}
+try{
+  const seen0=JSON.parse(localStorage.getItem('d13_ends')||'[]');
+  if(seen0.length)$('titleColl').textContent='—— 已见证 '+seen0.filter(k=>ENDS[k]).length+' / '+Object.keys(ENDS).length+' 个结局 ——';
+}catch(err){}
 
 /* ============ 输入 ============ */
 const move={x:0,y:0};let lookVel=0;
