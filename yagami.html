@@ -157,6 +157,8 @@ body.writing #redveil{opacity:1;}
 一本黑色的笔记本，从天而降。
 
 「名字被写上的人类，将会死亡。」</div>
+  <div id="diffPick" style="display:flex;gap:8px;margin-top:26px;flex-wrap:wrap;justify-content:center"></div>
+  <div id="diffTag" style="margin-top:12px;font-size:11px;letter-spacing:.2em;color:#4a4258;min-height:18px"></div>
   <div class="btnrow">
     <button class="btn" id="startBtn">拾 起 笔 记</button>
     <button class="btn" id="loadBtn" style="display:none">继 续 游 戏</button>
@@ -205,12 +207,28 @@ function bgm(key){
 const $=id=>document.getElementById(id);
 const S={day:1,sus:0,sup:0,heart:100,node:'d1_1',flags:{},chapter:1};
 function clamp(v){return Math.max(0,Math.min(100,v));}
-function setStats(d){ if(d.sus)S.sus=clamp(S.sus+d.sus); if(d.sup)S.sup=clamp(S.sup+d.sup); if(d.heart)S.heart=clamp(S.heart+d.heart);
+/* ── 难度 ── */
+const DIFF={
+ 1:{name:'一星 · 体验剧情',mul:.5,heartMul:.5,susCap:100,raid:false,panic:false,tag:'安心看故事，数值波动减半'},
+ 3:{name:'三星 · 标准',mul:1,heartMul:1,susCap:100,raid:true,raidAt:85,panic:false,tag:'原作体验，一次失误尚可挽回'},
+ 5:{name:'五星 · 地狱',mul:1.6,heartMul:1.6,susCap:100,raid:true,raidAt:62,panic:true,tag:'L的突击审讯 · 理性崩溃会失控 · 一步错，满盘皆输'},
+};
+function dif(){return DIFF[S.diff||3];}
+function setStats(d){ const D=dif();
+  if(d.sus)S.sus=clamp(S.sus+(d.sus>0?d.sus*D.mul:d.sus));
+  if(d.sup)S.sup=clamp(S.sup+d.sup);
+  if(d.heart)S.heart=clamp(S.heart+(d.heart<0?d.heart*D.heartMul:d.heart));
   $('sSus').querySelector('b').textContent=S.sus+'%';
   $('sSup').querySelector('b').textContent=S.sup+'%';
   $('sHeart').querySelector('b').textContent=S.heart;
   if(S.sus>=100){go('end_caught');return true;}
   if(S.heart<=0){go('end_broken');return true;}
+  // 五星/三星：怀疑度过高触发 L 的突击审讯
+  if(D.raid&&S.sus>=D.raidAt&&!S.flags.raiding&&curNode&&curNode.indexOf('raid')<0){
+    S.flags.raiding=true;S.resumeTo=pendingNext||curNode;setTimeout(()=>go('raid_1'),60);return true;}
+  // 五星：理性过低会失控
+  if(D.panic&&S.heart<=25&&!S.flags.panicked&&Math.random()<.5){
+    S.flags.panicked=true;S.resumeTo=pendingNext||curNode;setTimeout(()=>go('panic_1'),60);return true;}
   return false;}
 function setDay(n){S.day=n;$('day').textContent='第 '+n+' 天';}
 const CHARA={
@@ -260,6 +278,7 @@ const CHAPTERS=[
  {id:2,name:'第二章 · 尾行者',node:'c2_1',day:15},
  {id:3,name:'第三章 · 同一屋檐',node:'c3_1',day:35},
  {id:4,name:'第四章 · 第二基拉',node:'c4_1',day:70},
+ {id:5,name:'第五章 · 记忆的代价',node:'c5_1',day:95},
 ];
 function unlocked(){try{return JSON.parse(localStorage.getItem('yagami_unlocked'))||[1];}catch(e){return [1];}}
 function unlock(n){const u=unlocked();if(!u.includes(n)){u.push(n);localStorage.setItem('yagami_unlocked',JSON.stringify(u));}}
@@ -267,8 +286,9 @@ function unlock(n){const u=unlocked();if(!u.includes(n)){u.push(n);localStorage.
 function autoUnlock(id){CHAPTERS.forEach(c=>{if(c.node===id)unlock(c.id);});}
 function loadSave(){try{const d=JSON.parse(localStorage.getItem('yagami_save'));if(d){Object.assign(S,d);return true;}}catch(e){}return false;}
 
-let queue=[],qi=0,typing=null,busy=false,curNode=null;
+let queue=[],qi=0,typing=null,busy=false,curNode=null,pendingNext=null;
 function go(id){
+  if(id==='RESUME'){S.flags.raiding=false;const back=S.resumeTo||CHAPTERS[Math.max(0,(S.chapter||1)-1)].node;S.resumeTo=null;return go(back);}
   const n=STORY[id];
   if(!n){console.error('missing node',id);return;}
   curNode=id;S.node=id;autoUnlock(id);save();
@@ -320,7 +340,7 @@ function showChoices(list){
   list.forEach(c=>{ if(c.cond&&!c.cond(S))return;
     const b=document.createElement('button');b.className='ch'+(c.dark?' dark':'');
     b.innerHTML=c.label+(c.hint?'<small>'+c.hint+'</small>':'');
-    b.onclick=()=>{ if(c.stats){if(setStats(c.stats))return;} if(c.flag)S.flags[c.flag]=true; go(c.next); };
+    b.onclick=()=>{ pendingNext=c.next; if(c.stats){if(setStats(c.stats))return;} if(c.flag)S.flags[c.flag]=true; pendingNext=null; go(c.next); };
     box.appendChild(b);});
 }
 function writeName(name,then){
@@ -1357,7 +1377,7 @@ c4_end_dark:{bg:'god',chara:'light',bgm:'menu',t:[
  {s:'琉克',x:'「……我在死神界，见过很多这样的眼睛。」'},
  {s:'',x:'下一章：《记忆的代价》——L 要把你和海砂，一起关起来。'},
 ],choices:[
- {label:'进入第五章（制作中）',next:'end_ch4'},
+ {label:'进入第五章 · 记忆的代价',next:'c5_1'},
  {label:'查看当前周目结算',next:'end_ch4'},
 ]},
 c4_end_light:{bg:'god',chara:'light',bgm:'menu',t:[
@@ -1367,7 +1387,7 @@ c4_end_light:{bg:'god',chara:'light',bgm:'menu',t:[
  {s:'雷姆',x:'「（远处）……那个人类，也许还没有完全烂掉。」'},
  {s:'',x:'下一章：《记忆的代价》——当 L 把你关进那间没有窗的房间时，你会为了证明清白，放弃什么？'},
 ],choices:[
- {label:'进入第五章（制作中）',next:'end_ch4'},
+ {label:'进入第五章 · 记忆的代价',next:'c5_1'},
  {label:'查看当前周目结算',next:'end_ch4'},
 ]},
 c4_end_war:{bg:'night',chara:'',bgm:'l',t:[
@@ -1378,10 +1398,322 @@ c4_end_war:{bg:'night',chara:'',bgm:'l',t:[
  {s:'琉克',x:'「呐月，这就是被人握着名字的感觉哦。」'},
  {s:'琉克',x:'「你写下的每一个人，临死前都是这种感觉。」'},
 ],choices:[
- {label:'进入第五章（制作中）',next:'end_ch4'},
+ {label:'进入第五章 · 记忆的代价',next:'c5_1'},
  {label:'查看当前周目结算',next:'end_ch4'},
 ]},
 end_ch4:{end:'ch4'},
+
+/* ═══════════════════════════════════════════════
+   高难度事件：L 的突击审讯 / 理性失控
+   ═══════════════════════════════════════════════ */
+raid_1:{bg:'hq',chara:'L',bgm:'l',t:[
+ {s:'',x:'——你的手机响了。是父亲。'},
+ {s:'夜神父',x:'「月，你现在马上到搜查本部来一趟。龙崎……点名要见你。」'},
+ {s:'',x:'（半小时后。没有窗的会议室。L 蹲在椅子上，面前摊着一叠资料。）'},
+ {s:'L',x:'「夜神同学。占用你一点时间。」'},
+ {s:'L',x:'「我准备了几个问题。请<span class="l">立刻回答</span>——思考时间超过三秒的答案，我不会采信。」'},
+ {s:'夜神月',x:'（——突击审讯。他在测我的反射，而不是我的逻辑。）'},
+],next:'raid_q1'},
+raid_q1:{bg:'hq',chara:'L',bgm:'l',t:[
+ {s:'L',x:'「第一个问题。」'},
+ {s:'L',x:'「如果你是基拉，你现在最想杀的人是谁？」'},
+],choices:[
+ {label:'「当然是你，龙崎。」',hint:'坦荡到近乎挑衅',next:'raid_q1a'},
+ {label:'「我不是基拉，回答不了这种假设。」',hint:'滴水不漏',next:'raid_q1b'},
+ {label:'「……为什么这么问？」',hint:'反问拖延',next:'raid_q1c'},
+]},
+raid_q1a:{bg:'hq',chara:'L',bgm:'l',t:[
+ {s:'L',x:'「……很好。」'},
+ {s:'L',x:'「一个无辜的人被问到这种问题，通常会玩笑式地承认『那当然是你』。你答得很自然。」'},
+ {s:'L',x:'「而且你没有回避。回避才是心虚。」'},
+ {s:'夜神月',x:'（过关。他要的就是这种"不设防"。）'},
+],next:'raid_q2',stats:{sus:-6}},
+raid_q1b:{bg:'hq',chara:'L',bgm:'l',t:[
+ {s:'L',x:'「『回答不了假设』——这是律师式的回答。」'},
+ {s:'L',x:'「一个十九岁的大学生，被朋友半开玩笑地问『如果你是基拉』，会本能地开玩笑回去。」'},
+ {s:'L',x:'「而你，选择了法律上最安全的措辞。」'},
+ {s:'L',x:'「你在<span class="l">保护自己</span>，夜神同学。为什么？」'},
+],next:'raid_q2',stats:{sus:8}},
+raid_q1c:{bg:'hq',chara:'L',bgm:'l',t:[
+ {s:'L',x:'「反问。也就是说，你需要时间。」'},
+ {s:'L',x:'「用一个问题，换半秒钟的思考——这是审讯室里的老手才会用的技巧。」'},
+ {s:'L',x:'「你是从哪里学来的？夜神局长教你的吗？」'},
+ {s:'夜神月',x:'（……糟糕。）'},
+],next:'raid_q2',stats:{sus:10}},
+raid_q2:{bg:'hq',chara:'L',bgm:'l',t:[
+ {s:'L',x:'「第二个问题。」'},
+ {s:'L',x:'「基拉停手过几次。你觉得，他为什么停手？」'},
+],choices:[
+ {label:'「大概是察觉到危险了吧。」',hint:'普通推理',next:'raid_q2a'},
+ {label:'「因为他需要证明自己不是嫌疑人。」',hint:'太精准了',next:'raid_q2b'},
+ {label:'「我怎么知道杀人犯在想什么。」',hint:'撇清',next:'raid_q2c'},
+]},
+raid_q2a:{bg:'hq',chara:'L',bgm:'l',t:[
+ {s:'L',x:'「嗯。最普通的答案。」'},
+ {s:'L',x:'「普通得……刚刚好。」'},
+ {s:'夜神月',x:'（安全通过。在他面前，平庸才是最好的伪装。）'},
+],next:'raid_q3',stats:{sus:-4}},
+raid_q2b:{bg:'hq',chara:'L',bgm:'l',t:[
+ {s:'L',x:'「……」'},
+ {s:'L',x:'「这正是我们搜查本部内部的推论。上周才得出的，从未对外公开。」'},
+ {s:'L',x:'「夜神同学，你是怎么想到的？」'},
+ {s:'夜神月',x:'（——！说多了！）'},
+ {s:'L',x:'「聪明是好事。但在这个房间里，太聪明是<span class="l">致命的</span>。」'},
+],next:'raid_q3',stats:{sus:14}},
+raid_q2c:{bg:'hq',chara:'L',bgm:'l',t:[
+ {s:'L',x:'「『我怎么知道杀人犯在想什么』。」'},
+ {s:'L',x:'「可是夜神同学，你从上周开始，就在协助搜查本部分析基拉的心理。」'},
+ {s:'L',x:'「你昨天还提交过一份很出色的侧写报告。」'},
+ {s:'L',x:'「现在却说『我怎么知道』——你在<span class="l">突然变笨</span>。为什么？」'},
+],next:'raid_q3',stats:{sus:9}},
+raid_q3:{bg:'hq',chara:'L',bgm:'l',t:[
+ {s:'L',x:'「最后一个问题。」'},
+ {s:'',x:'他抬起眼睛，那双没有波澜的眼睛，第一次直直地钉住你。'},
+ {s:'L',x:'「<span class="l">你觉得自己是好人吗？</span>」'},
+],choices:[
+ {label:'「我觉得我是。」',hint:'普通人的普通回答',next:'raid_end_a'},
+ {label:'「没有人是纯粹的好人。」',hint:'哲学式回避',next:'raid_end_b'},
+ {label:'（沉默几秒）「……我不知道。」',hint:'诚实到危险',next:'raid_end_c'},
+]},
+raid_end_a:{bg:'hq',chara:'L',bgm:'l',t:[
+ {s:'L',x:'「是吗。」'},
+ {s:'L',x:'「谢谢你的配合，夜神同学。今天就到这里。」'},
+ {s:'',x:'走出会议室时，你的后背已经湿透了。'},
+ {s:'夜神月',x:'（撑过去了。但他不会停手——他会一次又一次地，把我拉进这个房间。）'},
+],next:'raid_done',stats:{sus:-3}},
+raid_end_b:{bg:'hq',chara:'L',bgm:'l',t:[
+ {s:'L',x:'「『没有人是纯粹的好人』。」'},
+ {s:'L',x:'「基拉大概也是这么想的。所以他才认为，杀掉那些『不纯粹的人』是可以的。」'},
+ {s:'L',x:'「你和他，在同一个逻辑起点上。」'},
+ {s:'夜神月',x:'（……这个男人，每一句话都在编织绞索。）'},
+],next:'raid_done',stats:{sus:7}},
+raid_end_c:{bg:'hq',chara:'L',bgm:'l',t:[
+ {s:'',x:'你沉默了。三秒，四秒。超过了他给的时限。'},
+ {s:'夜神月',x:'「……我不知道。」'},
+ {s:'',x:'L 盯着你，很久很久。'},
+ {s:'L',x:'「……这是今天唯一一个，我认为你没有说谎的回答。」'},
+ {s:'L',x:'「夜神同学。如果有一天你想说些什么——随时来找我。」'},
+ {s:'L',x:'「我会听完。哪怕是在把手铐扣上之前。」'},
+ {s:'夜神月',x:'（……）'},
+],next:'raid_done',stats:{sus:2,heart:6}},
+raid_done:{bg:'night',chara:'ryuk',bgm:'menu',t:[
+ {s:'琉克',x:'「呐月，你刚才手在抖哦。」'},
+ {s:'夜神月',x:'「……闭嘴。」'},
+ {s:'',x:'（突击审讯结束。你的怀疑度仍然很高——L 随时会再来一次。）'},
+],choices:[
+ {label:'继续',next:'raid_return'},
+]},
+raid_return:{bg:'night',chara:'',t:[
+ {s:'',x:'（回到主线。）'},
+],next:'RESUME'},
+
+/* ── 五星专属：理性崩溃失控 ── */
+panic_1:{bg:'night',chara:'',bgm:'write',t:[
+ {s:'',x:'……'},
+ {s:'',x:'你不记得自己是什么时候拿起笔的。'},
+ {s:'',x:'笔记本摊在膝盖上。你的手在动。名字一个接一个地出现——'},
+ {s:'',x:'有些是罪犯。有些……你根本不认识。'},
+ {s:'夜神月',x:'（停下。停下。<span class="bad">我在做什么？</span>）'},
+ {s:'琉克',x:'「（罕见地没有笑）月。你已经写了四十分钟了。」'},
+ {s:'',x:'你低头看那一页。字迹歪斜、重叠、越写越大。最下面一行，写着你自己的名字——只差最后一笔。'},
+],choices:[
+ {label:'扔掉笔，冲进浴室用冷水浇头',hint:'找回自己',next:'panic_stop'},
+ {label:'……继续写下去',hint:'⚠ 危险',next:'panic_go',dark:true},
+]},
+panic_stop:{bg:'room',chara:'light',bgm:'menu',t:[
+ {s:'',x:'冷水顺着头发流进领口。镜子里的那张脸，眼睛通红，嘴角还挂着一点笑。'},
+ {s:'夜神月',x:'（那不是我。）\n（……那是我吗？）'},
+ {s:'',x:'你撕掉了那一页，看着它在洗手池里烧成灰。'},
+ {s:'夜神月',x:'（我必须更小心。不只是防着 L——）\n（还要防着，某个正在我身体里长大的东西。）'},
+],next:'panic_done',stats:{heart:20}},
+panic_go:{bg:'night',chara:'',bgm:'write',t:[
+ {s:'',x:'笔尖落下。'},
+ {s:'',x:'……'},
+ {s:'',x:'第二天，全国有六十三人心脏麻痹。其中十九人，没有任何犯罪记录。'},
+ {s:'',x:'（搜查本部。）'},
+ {s:'L',x:'「基拉的行为模式崩坏了。他开始杀无关的人。」'},
+ {s:'L',x:'「这意味着两种可能：换人了，或者——<span class="l">他疯了。</span>」'},
+ {s:'夜神月',x:'（我没疯。我只是……累了。）\n（对，我只是累了。仅此而已。）'},
+],next:'panic_done',stats:{heart:-18,sup:-16,sus:12}},
+panic_done:{bg:'night',chara:'',t:[
+ {s:'',x:'（回到主线。）'},
+],next:'RESUME'},
+
+/* ═══════════════════════════════════════════════
+   第五章《记忆的代价》
+   囚禁 · 放弃所有权 · 失忆的自己
+   ═══════════════════════════════════════════════ */
+c5_1:{bg:'hq',day:95,chara:'L',bgm:'l',t:[
+ {s:'',x:'第五章 · 记忆的代价'},
+ {s:'',x:'搜查本部。所有人都到齐了。L 把一叠资料推到桌子中央。'},
+ {s:'L',x:'「我要逮捕两个人。」'},
+ {s:'L',x:'「第二基拉——弥海砂。以及第一基拉的嫌疑人——<span class="l">夜神月</span>。」'},
+ {s:'夜神父',x:'「龙崎！证据呢！」'},
+ {s:'L',x:'「没有证据。所以我不是要『定罪』，我是要『验证』。」'},
+ {s:'L',x:'「把他们分别关进独立的拘禁室。断绝一切与外界的接触。」'},
+ {s:'L',x:'「如果基拉的杀人停止——那就是他们。如果继续——他们是清白的。」'},
+ {s:'L',x:'「<span class="l">这是最原始，也最有效的方法。</span>」'},
+],next:'c5_2'},
+c5_2:{bg:'night',day:96,chara:'ryuk',bgm:'write',t:[
+ {s:'',x:'当天夜里。你的房间。你知道明天早上，他们就会来。'},
+ {s:'夜神月',x:'（被关起来。二十四小时监控。笔记会被搜出来。）'},
+ {s:'夜神月',x:'（一旦笔记被发现，一切结束。）'},
+ {s:'琉克',x:'「呐月，有个规则我一直没告诉你。」'},
+ {s:'琉克',x:'「笔记的持有者，可以<span class="bad">放弃所有权</span>。」'},
+ {s:'琉克',x:'「一旦放弃，你会失去所有关于笔记的记忆——包括我。你会变回一个『真正无辜』的人类。」'},
+ {s:'夜神月',x:'（——！）'},
+ {s:'琉克',x:'「而且，如果之后再碰到笔记，记忆会全部回来哦。」'},
+ {s:'夜神月',x:'（……全部，回来。）'},
+],next:'c5_3'},
+c5_3:{bg:'room',chara:'light',bgm:'l',t:[
+ {s:'夜神月',x:'（这就是唯一的解。）'},
+ {s:'夜神月',x:'（放弃记忆的我，是<span class="em">真心相信自己无辜的</span>。）'},
+ {s:'夜神月',x:'（L 的观察、测谎、心理侧写，全部会失效——因为我不是在演。我是真的不知道。）'},
+ {s:'夜神月',x:'（然后，安排好在我出狱后，让笔记『恰好』回到我手里。记忆恢复，游戏重开。）'},
+ {s:'夜神月',x:'（完美。天衣无缝。）'},
+ {s:'夜神月',x:'（……但那段时间里的『我』，会是谁？）'},
+ {s:'琉克',x:'「怎么了月？犹豫了？」'},
+],choices:[
+ {label:'执行计划：放弃所有权',hint:'抹掉自己，才能活下来',next:'c5_give',dark:true},
+ {label:'不放弃，赌 L 找不到笔记',hint:'保留记忆，硬扛审讯',next:'c5_keep'},
+ {label:'⚠ 趁现在自首，结束这一切',hint:'原创：在被抹掉之前，做最后一个属于"我"的选择',next:'c5_surrender'},
+]},
+
+/* ---------- 路线A：放弃记忆 ---------- */
+c5_give:{bg:'night',chara:'ryuk',bgm:'write',t:[
+ {s:'夜神月',x:'「琉克。我放弃笔记的所有权。」'},
+ {s:'琉克',x:'「……真的？想清楚了？」'},
+ {s:'夜神月',x:'「快点。」'},
+ {s:'',x:'你把最后的安排写在纸上、藏进夹层、设定好时机。每一步都精确到分钟。'},
+ {s:'',x:'然后，你抬起头，看着那个陪了你半年的死神。'},
+ {s:'夜神月',x:'「琉克。」'},
+ {s:'琉克',x:'「嗯？」'},
+ {s:'夜神月',x:'「……没什么。」'},
+ {s:'',x:'（其实你本来想说的是：谢谢。）\n（但你没说出口。因为一秒钟之后，你就不会记得他是谁了。）'},
+],next:'c5_amnesia'},
+c5_amnesia:{bg:'hq',day:97,chara:'',bgm:'menu',t:[
+ {s:'',x:'……'},
+ {s:'',x:'拘禁室。没有窗。四面白墙。'},
+ {s:'',x:'一个大学生坐在地板上，双手被铐着，正在对着监控镜头发出愤怒的、真诚的呐喊。'},
+ {s:'夜神月',x:'「龙崎！我不是基拉！我到底要说多少遍！」'},
+ {s:'夜神月',x:'「你凭什么关我？！我父亲是警察，我从小就相信法律——」'},
+ {s:'夜神月',x:'「（声音哽咽）我这一辈子，最讨厌的就是犯罪者啊……！」'},
+ {s:'',x:'（他没有说谎。）\n（他真心地、完完全全地相信自己是无辜的。）'},
+ {s:'',x:'（因为在这一刻，他确实是。）'},
+],next:'c5_amnesia2'},
+c5_amnesia2:{bg:'hq',day:110,chara:'L',bgm:'l',t:[
+ {s:'',x:'（监控室。L 已经连续看了十三天。）'},
+ {s:'L',x:'「……基拉的杀人，停止了。」'},
+ {s:'松田',x:'「那不就说明是他吗？！」'},
+ {s:'L',x:'「不。」'},
+ {s:'L',x:'「一个人可以伪装表情，可以控制心率，可以背下台词。」'},
+ {s:'L',x:'「但没有人，能在被单独监禁十三天、精神濒临崩溃的情况下，还保持完美的谎言。」'},
+ {s:'L',x:'「他的愤怒是真的。他的绝望是真的。他甚至……在半夜哭着喊他妹妹的名字。」'},
+ {s:'L',x:'「<span class="l">这个夜神月，不是基拉。</span>」'},
+ {s:'L',x:'「可是我的推理，明明每一步都是对的。」'},
+ {s:'L',x:'「除非——存在某种，我完全无法想象的手段。」'},
+],next:'c5_amnesia3'},
+c5_amnesia3:{bg:'room',day:135,chara:'light',bgm:'write',t:[
+ {s:'',x:'五十天后。你被释放了。'},
+ {s:'',x:'瘦了一圈，眼睛凹陷，但笑容还是那么干净。你向父亲道歉，说给大家添麻烦了。'},
+ {s:'',x:'那天下午，你去取一件很久以前寄存的东西。'},
+ {s:'',x:'指尖，碰到了那本黑色笔记本的封面。'},
+ {s:'',x:'——'},
+ {s:'夜神月',x:'（……）'},
+ {s:'夜神月',x:'（……啊。）'},
+ {s:'夜神月',x:'（<span class="em">我想起来了。</span>）'},
+ {s:'夜神月',x:'（我是谁。我做过什么。我要做什么。）'},
+ {s:'夜神月',x:'（还有——<span class="bad">我赢了。</span>）'},
+],next:'c5_after_dark'},
+c5_after_dark:{bg:'god',chara:'light',bgm:'menu',t:[
+ {s:'琉克',x:'「哟，欢迎回来。感觉怎么样？」'},
+ {s:'夜神月',x:'「……很奇怪。」'},
+ {s:'夜神月',x:'「那五十天里的我，是真的相信自己是好人。」'},
+ {s:'夜神月',x:'「他哭着说『我最讨厌犯罪者』——那句话是真心的。」'},
+ {s:'夜神月',x:'「而现在的我，会觉得那个『他』……很可笑。」'},
+ {s:'琉克',x:'「那么，哪一个才是真正的你呢？」'},
+ {s:'夜神月',x:'「……」'},
+ {s:'夜神月',x:'（哪一个？）'},
+ {s:'夜神月',x:'（如果我能亲手把"相信法律的夜神月"删掉五十天，再随时装回来——）'},
+ {s:'夜神月',x:'（那所谓的"我"，到底还剩下什么？）'},
+],next:'c5_end_dark',stats:{sus:-30,heart:-10}},
+
+/* ---------- 路线B：不放弃，硬扛 ---------- */
+c5_keep:{bg:'hq',day:97,chara:'',bgm:'l',t:[
+ {s:'夜神月',x:'（不。放弃记忆，等于把自己交出去五十天。）'},
+ {s:'夜神月',x:'（那五十天里，我什么都控制不了。海砂可能崩溃、雷姆可能背叛、L 可能找到笔记。）'},
+ {s:'夜神月',x:'（我要用<span class="em">清醒的头脑</span>，撑过去。）'},
+ {s:'',x:'第一天：你保持冷静，逻辑清晰地驳斥每一项指控。'},
+ {s:'',x:'第七天：睡眠剥夺开始生效。你开始分不清白天黑夜。'},
+ {s:'',x:'第十五天：你发现自己在对着墙壁自言自语。'},
+ {s:'',x:'第二十天：L 的声音从扬声器里传来——'},
+ {s:'L',x:'「夜神同学。你已经二十天没有笑过了。」'},
+ {s:'L',x:'「一个真正无辜的人，在被冤枉二十天后，会愤怒、会崩溃、会歇斯底里。」'},
+ {s:'L',x:'「而你，一直很<span class="l">安静</span>。」'},
+ {s:'L',x:'「就像一个在等待的人。」'},
+],next:'c5_keep2',stats:{sus:20,heart:-20}},
+c5_keep2:{bg:'hq',day:120,chara:'L',bgm:'l',t:[
+ {s:'',x:'第三十天。你已经开始出现幻听。'},
+ {s:'',x:'但你没有崩溃。你甚至没有让自己的眼神失焦过一次。'},
+ {s:'L',x:'「……我认输了。」'},
+ {s:'L',x:'「不是认输你是清白的。而是——我无法用监禁攻破你。」'},
+ {s:'L',x:'「你会被释放。但夜神同学，我要告诉你一件事：」'},
+ {s:'L',x:'「一个能在三十天单独监禁下不露出破绽的十九岁少年，本身就是最大的破绽。」'},
+ {s:'L',x:'「<span class="l">从今往后，我会一直盯着你。到死为止。</span>」'},
+ {s:'夜神月',x:'（……我保住了记忆。代价是，L 对我的怀疑永远不会消退了。）'},
+],next:'c5_end_hard',stats:{sus:14,heart:-14}},
+
+/* ---------- 路线C：自首（原创） ---------- */
+c5_surrender:{bg:'hq',day:96,chara:'light',bgm:'menu',t:[
+ {s:'夜神月',x:'（……）'},
+ {s:'夜神月',x:'（放弃记忆，就是承认：那个"相信法律的夜神月"，只是我可以随时删掉的一个程序。）'},
+ {s:'夜神月',x:'（如果我连"我是谁"都能当成道具——那我到底在为谁建新世界？）'},
+ {s:'',x:'那天夜里，你没有去找琉克。'},
+ {s:'',x:'你走进了搜查本部，在所有人面前，坐到了 L 对面。'},
+ {s:'夜神月',x:'「龙崎。我有话要说。」'},
+ {s:'夜神月',x:'「不用把我关起来了。」'},
+ {s:'夜神月',x:'「<span class="em">我就是基拉。</span>」'},
+ {s:'',x:'（房间里死一样的安静。你父亲手里的杯子掉在地上。）'},
+],next:'c5_surrender2'},
+c5_surrender2:{bg:'hq',chara:'L',bgm:'l',t:[
+ {s:'L',x:'「……」'},
+ {s:'L',x:'「为什么？」'},
+ {s:'夜神月',x:'「因为唯一能让我活下去的方法，是把『我自己』抹掉五十天。」'},
+ {s:'夜神月',x:'「而我发现，我做不到。」'},
+ {s:'夜神月',x:'「不是因为我怕。是因为——如果我能这么轻易地删掉自己，那我杀的那些人，又算什么？」'},
+ {s:'夜神月',x:'「我一直告诉自己：我是在审判。我有原则，我不是疯子。」'},
+ {s:'夜神月',x:'「可是当我准备好把『相信法律的那个我』当作一次性道具丢掉的时候——」'},
+ {s:'夜神月',x:'「我就已经不是审判者了。我只是个……想活下去的杀人犯。」'},
+ {s:'L',x:'「……」'},
+ {s:'L',x:'「夜神同学。你知道你现在说的每一句话，都会成为呈堂证供吗。」'},
+ {s:'夜神月',x:'「知道。」'},
+ {s:'L',x:'「（很久之后）……我第一次，不想赢这场游戏。」'},
+],next:'c5_end_surrender',stats:{heart:30,sup:-20}},
+
+/* ---------- 第五章收束 ---------- */
+c5_end_dark:{bg:'god',chara:'light',bgm:'menu',t:[
+ {s:'',x:'—— 第五章 · 记忆的代价　完 ——'},
+ {s:'',x:'你骗过了世界上最伟大的侦探。方法是：让自己也被骗。'},
+ {s:'',x:'现在，你在 L 的眼皮底下，恢复了全部记忆。而他，已经排除了对你的怀疑。'},
+ {s:'',x:'棋盘上，你第一次占据了绝对优势。'},
+ {s:'琉克',x:'「呐月。刚才那五十天，那个『无辜的你』——」'},
+ {s:'琉克',x:'「他要是知道自己只是个道具，会怎么想呢？」'},
+ {s:'',x:'下一章：《幽会日》——雨中的天台。你和他，只有一个人能走下去。'},
+],choices:[
+ {label:'进入第六章（制作中）',next:'end_ch5'},
+ {label:'查看当前周目结算',next:'end_ch5'},
+]},
+c5_end_hard:{bg:'night',chara:'light',bgm:'l',t:[
+ {s:'',x:'—— 第五章 · 记忆的代价　完（清醒线）——'},
+ {s:'',x:'你带着完整的记忆走出了那间白色的房间。也带着 L 永不消退的凝视。'},
+ {s:'',x:'从今往后，每一次呼吸，都在他的注视之下。'},
+ {s:'',x:'下一章：《幽会日》——他知道是你。你知道他知道。'},
+],choices:[
+ {label:'进入第六章（制作中）',next:'end_ch5'},
+ {label:'查看当前周目结算',next:'end_ch5'},
+]},
+c5_end_surrender:{end:'surrender'},
+end_ch5:{end:'ch5'},
 
 /* ---------- 结局 ---------- */
 end_ch2:{end:'ch2'},
@@ -1396,6 +1728,8 @@ apple_dark:{name:'白<span class="r">手套</span>',tag:'魔改END · 苹果线 
 apple_light:{name:'一颗<span class="g">苹果</span>',tag:'魔改END · 苹果线 · 止损',story:'你放走了唯一一个，把你当朋友的人。\n\n你说不清那是仁慈，还是又一次精准的计算。\n但那天之后，你偶尔会在便利店的水果架前，\n多站一会儿。\n\n看着那些红苹果，\n想起自己曾经，也是个会为"对不对"而犹豫的人。\n——只是那个人，已经死在成为神的路上了。'},
 apple_kill:{name:'第一块<span class="r">砖</span>',tag:'魔改END · 苹果线 · 无可挽回',story:'他只是个临时演员。\n一个被 L 雇来、连剧本都没看懂的路人。\n\n他不该死。你比谁都清楚。\n\n但你还是写下了那三个字——\n因为他"可能"会威胁到你。\n\n从这一笔开始，\n"该死的人"这个标准，\n就从"作恶的人"，\n悄悄变成了"挡我的人"。\n\n新世界的第一块砖，\n砌在了一个无辜者的胸口上。\n\n而 L 看着那份死亡报告，轻声说：\n「找到你了，基拉。」'},
 apple_bystander:{name:'局<span class="g">外人</span>',tag:'魔改END · 苹果线 · 放过',story:'他到最后都不知道自己经历了什么。\n\n他只是跟朋友吹牛：\n「上次有个客人落了本超中二的本子在我店里。」\n然后笑得像个傻子。\n\n你远远看着，忽然觉得——\n这样很好。\n\n棋盘之外，还有人在好好地活着。\n还有人，不需要知道神和侦探的战争。\n\n那天你笑了。\n琉克说你笑了，你否认了。\n\n但你心里清楚：\n那是你成为"神"之后，\n第一次为了和自己无关的事，感到高兴。'},
+ch5:{name:'第五章<br><span class="g">完</span>',tag:'To be continued · 第六章制作中',story:'你骗过了世界上最伟大的侦探。\n方法是：让自己也被骗。\n\n那五十天里，有一个"夜神月"\n真心相信自己是无辜的，\n哭着说他最讨厌犯罪者。\n\n他是你吗？\n还是你为了活下去，\n临时穿上又脱下的一件衣服？\n\n（第六章《幽会日》制作中）'},
+surrender:{name:'我 是 <span class="r">基 拉</span>',tag:'魔改END · 在被抹掉之前',story:'你本可以赢的。\n只要把自己删掉五十天。\n\n但你发现，你做不到。\n\n不是因为怕，\n是因为——\n如果"我是谁"都能当成一次性道具，\n那你杀过的每一个人，\n就都失去了意义。\n\n你走进那个房间，坐到他对面，\n说出了那四个字。\n\nL 沉默了很久，然后说：\n「我第一次，不想赢这场游戏。」\n\n——这是你作为"人"，\n而不是作为"神"，\n做出的最后一个选择。'},
 ch4:{name:'第四章<br><span class="g">完</span>',tag:'To be continued · 第五章制作中',story:'她把命交给了你，眼睛交给了你，\n还有一个死神，为了她愿意杀了你。\n\n你可以用这一切，四十秒结束这场战争。\n\n问题从来不是"你能不能"。\n问题是——\n当你踩着一个爱你的人走上神坛，\n那个神坛上坐着的，还是你吗？\n\n（第五章《记忆的代价》制作中）'},
 ch3:{name:'第三章<br><span class="g">完</span>',tag:'To be continued · 第四章制作中',story:'你和他住在同一个屋檐下。\n吃同一锅饭，看同一场雨，\n聊正义，聊未来，聊基拉。\n\n你们是彼此见过最聪明的人，\n也是彼此唯一的敌人。\n\n如果不是这场战争——\n你们本来，会是最好的朋友。\n\n（第四章《第二基拉》制作中）'},
 ch2:{name:'第二章<br><span class="g">完</span>',tag:'To be continued · 第三章制作中',story:'你与看不见的 L，下成了平局。\n\n但每赢一步，你的名字就离他更近一分。\n下一章，棋盘上将不再有屏幕的阻隔——\n他会伸出手，说：「初次见面，我是 L。」\n\n（想催更第三章《同一屋檐》，就去找作者。）'},
@@ -1405,10 +1739,25 @@ broken:{name:'崩<span class="r">坏</span>',tag:'BAD END · 理性归零',story
 };
 
 /* ================= 启动 ================= */
+/* 难度选择 UI */
+S.diff=parseInt(localStorage.getItem('yagami_diff')||'3');
+function buildDiff(){
+  const box=$('diffPick');box.innerHTML='';
+  [1,3,5].forEach(n=>{
+    const b=document.createElement('button');
+    const on=S.diff===n;
+    b.textContent='★'.repeat(n);
+    b.style.cssText='appearance:none;border:1px solid '+(on?'#c9a84c':'#2a2336')+';background:'+(on?'rgba(56,44,18,.8)':'rgba(18,13,24,.8)')+';color:'+(on?'#c9a84c':'#6b6478')+';font-size:13px;letter-spacing:.1em;padding:9px 16px;border-radius:2px;cursor:pointer';
+    b.onclick=()=>{S.diff=n;localStorage.setItem('yagami_diff',n);buildDiff();};
+    box.appendChild(b);
+  });
+  $('diffTag').textContent=DIFF[S.diff].name+' — '+DIFF[S.diff].tag;
+}
+buildDiff();
 if(localStorage.getItem('yagami_save'))$('loadBtn').style.display='';
 if(unlocked().length>1)$('chapBtn').style.display='';
 $('startBtn').onclick=()=>{localStorage.removeItem('yagami_save');
-  Object.assign(S,{day:1,sus:0,sup:0,heart:100,node:'d1_1',flags:{},chapter:1});
+  const _d=S.diff;Object.assign(S,{day:1,sus:0,sup:0,heart:100,node:'d1_1',flags:{},chapter:1,diff:_d});
   $('titleScreen').classList.remove('on');bgm('menu');setDay(1);setStats({});go('d1_1');};
 /* 章节选择 */
 function buildChapList(){
@@ -1422,7 +1771,8 @@ function buildChapList(){
     if(ok)b.onclick=()=>{
       // 按章节起点给一个合理的初始数值
       const preset={1:{sus:0,sup:0,heart:100},2:{sus:12,sup:16,heart:88},
-                    3:{sus:26,sup:34,heart:76},4:{sus:38,sup:52,heart:64}}[c.id];
+                    3:{sus:26,sup:34,heart:76},4:{sus:38,sup:52,heart:64},
+                    5:{sus:56,sup:64,heart:52}}[c.id];
       Object.assign(S,{day:c.day,node:c.node,flags:{},chapter:c.id},preset);
       $('sSus').querySelector('b').textContent=S.sus+'%';
       $('sSup').querySelector('b').textContent=S.sup+'%';
