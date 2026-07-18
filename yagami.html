@@ -46,6 +46,14 @@ body{color:var(--bone);font-family:'Noto Sans SC',sans-serif;font-weight:300;use
 #chara.blue img{filter:drop-shadow(0 0 26px rgba(91,127,158,.4)) drop-shadow(0 6px 20px rgba(0,0,0,.7));}
 #chara.red img{filter:drop-shadow(0 0 30px rgba(214,69,65,.4)) drop-shadow(0 6px 20px rgba(0,0,0,.7));}
 #chara.dim img{filter:brightness(.5) drop-shadow(0 6px 20px rgba(0,0,0,.7));}
+/* Q版：更小、坐落画面下方、轻微弹跳 */
+#chara.chibi{height:38dvh;max-height:340px;bottom:30dvh;}
+#chara.chibi img{animation:qbob 2.6s ease-in-out infinite;}
+@keyframes qbob{0%,100%{transform:translateY(0) rotate(-1deg);}50%{transform:translateY(-7px) rotate(1deg);}}
+/* 反差杀：Q版→正常立绘的一震 */
+#chara.snap{animation:snapin .4s cubic-bezier(.2,1.6,.4,1);}
+@keyframes snapin{0%{transform:translateX(-50%) scale(.75);filter:brightness(2.2);}
+ 45%{transform:translateX(-50%) scale(1.07);}100%{transform:translateX(-50%) scale(1);}}
 
 /* ---------- 顶部状态 ---------- */
 #hud{position:relative;z-index:5;display:flex;justify-content:space-between;align-items:center;
@@ -186,14 +194,45 @@ function setStats(d){ if(d.sus)S.sus=clamp(S.sus+d.sus); if(d.sup)S.sup=clamp(S.
   if(S.heart<=0){go('end_broken');return true;}
   return false;}
 function setDay(n){S.day=n;$('day').textContent='第 '+n+' 天';}
-const CHARA={light:{src:'assets/chara/light.webp',tone:'gold'},L:{src:'assets/chara/l.webp',tone:'blue'},ryuk:{src:'assets/chara/ryuk.webp',tone:'red'}};
+const CHARA={
+ light:{src:'assets/chara/light.webp',tone:'gold'},
+ L:{src:'assets/chara/l.webp',tone:'blue'},
+ ryuk:{src:'assets/chara/ryuk.webp',tone:'red'},
+ shiori:{src:'assets/chara/shiori_smile.webp',tone:'gold'},
+ shiori_think:{src:'assets/chara/shiori_think.webp',tone:'gold'},
+ shiori_uneasy:{src:'assets/chara/shiori_uneasy.webp',tone:'gold'},
+ shiori_tear:{src:'assets/chara/shiori_tear.webp',tone:'gold'},
+ naomi:{src:'assets/chara/naomi_calm.webp',tone:'blue'},
+ naomi_grief:{src:'assets/chara/naomi_grief.webp',tone:'blue'},
+ misa:{src:'assets/chara/misa_smile.webp',tone:'red'},
+ misa_mad:{src:'assets/chara/misa_mad.webp',tone:'red'},
+ misa_angry:{src:'assets/chara/misa_angry.webp',tone:'red'},
+ rem:{src:'assets/chara/rem.webp',tone:'blue'},
+ // Q版
+ q_light:{src:'assets/chibi/light_errand.webp',tone:'gold',chibi:1},
+ q_light_stone:{src:'assets/chibi/light_stone.webp',tone:'gold',chibi:1},
+ q_ryuk:{src:'assets/chibi/ryuk_apple.webp',tone:'red',chibi:1},
+ q_duo:{src:'assets/chibi/duo_night.webp',tone:'gold',chibi:1},
+ q_L:{src:'assets/chibi/l_chibi.webp',tone:'blue',chibi:1},
+};
+// 说话人 → 立绘key，用于明暗联动
+const SPEAKER2KEY={'夜神月':['light','q_light','q_light_stone','q_duo'],'L':['L','q_L'],'龙崎':['L','q_L'],'琉克':['ryuk','q_ryuk','q_duo'],'诗织':['shiori','shiori_think','shiori_uneasy','shiori_tear'],'南空直美':['naomi','naomi_grief'],'弥海砂':['misa','misa_mad','misa_angry'],'雷姆':['rem']};
 let charaKey=null;
 function setChara(who){
   const c=$('chara'),img=$('charaImg');
   if(!who){c.className='';charaKey=null;return;}
   const def=CHARA[who];if(!def){c.className='';return;}
+  const wasChibi=charaKey&&CHARA[charaKey]&&CHARA[charaKey].chibi;
+  const isChibi=!!def.chibi;
   if(charaKey!==who){img.src=def.src;charaKey=who;}
-  c.className='on '+def.tone;
+  c.className='on '+def.tone+(isChibi?' chibi':'');
+  // 反差杀：从Q版切回正常立绘时，猛地一震+闪白
+  if(wasChibi&&!isChibi){
+    c.classList.add('snap');
+    const fl=$('flash');fl.style.transition='opacity .06s';fl.style.opacity=.55;
+    setTimeout(()=>{fl.style.opacity=0;fl.style.transition='opacity .12s';},70);
+    setTimeout(()=>c.classList.remove('snap'),420);
+  }
 }
 function save(){localStorage.setItem('yagami_save',JSON.stringify(S));}
 function loadSave(){try{const d=JSON.parse(localStorage.getItem('yagami_save'));if(d){Object.assign(S,d);return true;}}catch(e){}return false;}
@@ -228,10 +267,11 @@ function showLine(sp,html){
   spEl.className=sp==='L'?'l':(sp==='琉克'?'ryuk':(sp===''||sp==='——'?'sys':''));
   // 立绘明暗跟随说话人
   const c=$('chara');
-  if(charaKey){
-    const talking=(charaKey==='L'&&sp==='L')||(charaKey==='ryuk'&&sp==='琉克')||(charaKey==='light'&&(sp==='夜神月'||sp===''));
-    const tone=CHARA[charaKey].tone;
-    c.className='on '+(talking?tone:'dim');
+  if(charaKey&&CHARA[charaKey]){
+    const keys=SPEAKER2KEY[sp]||[];
+    const talking=keys.includes(charaKey)||(sp===''&&charaKey.indexOf('light')>=0);
+    const def=CHARA[charaKey];
+    c.className='on '+(talking?def.tone:'dim')+(def.chibi?' chibi':'');
   }
   $('choices').innerHTML='';$('next').style.display='none';
   const el=$('text');clearInterval(typing);el.innerHTML='';
@@ -498,7 +538,7 @@ c2_end:{bg:'god',chara:'light',bgm:'menu',t:[
  {s:'琉克',x:'「说好的。写名字那么大的事你都干了，一个苹果不至于赖账吧？死神也是要吃饭的。」'},
  {s:'',x:'——就是这个微不足道的、荒诞的瞬间。\n历史，在这里分叉了。'},
 ],choices:[
- {label:'「……行，我去给你买。」',hint:'谁能想到，一切从这颗苹果开始崩坏',next:'br_apple_1'},
+ {label:'「……行，我去给你买。」',hint:'谁能想到，一切从这颗苹果开始崩坏',next:'br_apple_0'},
  {label:'「闭嘴，我在下一盘大棋。」',hint:'继续与L的正面对决',next:'c3_1'},
 ]},
 
@@ -506,7 +546,28 @@ c2_end:{bg:'god',chara:'light',bgm:'menu',t:[
    魔改支线①《苹果的代价》
    沙雕外壳 → 黑暗内核。原著绝无此线。
    ═══════════════════════════════════════════════ */
-br_apple_1:{bg:'street',day:20,chara:'',bgm:'menu',t:[
+br_apple_0:{bg:'night',day:20,chara:'q_duo',bgm:'menu',t:[
+ {s:'琉克',x:'「月——苹果——」'},
+ {s:'夜神月',x:'「……我在算 L 的行动模式。」'},
+ {s:'琉克',x:'「苹果。」'},
+ {s:'夜神月',x:'「明天。」'},
+ {s:'琉克',x:'「苹果苹果苹果苹果苹果苹果苹果苹果——」'},
+ {s:'',x:'（死神的戒断反应比想象中严重。据说会全身扭曲成麻花状打滚三小时。）'},
+ {s:'夜神月',x:'「…………好。我去买。」'},
+ {s:'琉克',x:'「嘿嘿。就知道月最好了。」'},
+ {s:'',x:'于是，全国模考第一、新世界的神、正在与 L 展开世纪对决的夜神月同学——\n在凌晨一点，出门给一只死神买水果去了。'},
+],next:'br_apple_L_watch'},
+br_apple_L_watch:{bg:'hq',chara:'q_L',bgm:'menu',t:[
+ {s:'',x:'（与此同时，某间酒店套房。）'},
+ {s:'L',x:'（蹲在椅子上，捧着监控画面）「……夜神月，凌晨一点出门。」'},
+ {s:'L',x:'「目标地点：便利店。购买物品：苹果。数量：一个。」'},
+ {s:'L',x:'（拈起一块蛋糕）「……为什么是苹果？为什么是凌晨一点？为什么只买一个？」'},
+ {s:'L',x:'「一个人不会为了自己，在凌晨一点只买一个苹果。<span class="l">他是买给谁的？</span>」'},
+ {s:'L',x:'「有同伙？共犯？还是——某种我尚未理解的存在？」'},
+ {s:'',x:'（世界上最伟大的侦探，正在为一个苹果构建三十七种假说。）'},
+ {s:'',x:'（他猜对了第三十八种。但那种可能性，他连想都不会去想。）'},
+],next:'br_apple_1'},
+br_apple_1:{bg:'street',day:20,chara:'q_duo',bgm:'menu',t:[
  {s:'',x:'深夜的便利店。冷白的灯。你站在水果货架前，手里捏着一颗红苹果。'},
  {s:'夜神月',x:'（我，全国模考第一，新世界的神……在半夜给一只死神跑腿买苹果。）'},
  {s:'',x:'（笔记本当然不在身上。它锁在书桌的暗格里，机关是我自己做的——打开方式错误就会引燃内页。除了我，没有人能碰到它。）'},
@@ -517,21 +578,26 @@ br_apple_1:{bg:'street',day:20,chara:'',bgm:'menu',t:[
  {label:'「……只是自言自语。」',hint:'搪塞过去',next:'br_apple_2'},
  {label:'「你看得见我旁边的东西？」',hint:'试探他是否碰过什么',next:'br_apple_touch'},
 ]},
-br_apple_touch:{bg:'street',chara:'',t:[
+br_apple_touch:{bg:'street',chara:'q_light',t:[
  {s:'吉田',x:'「你旁边？就……空气啊？夜神你没事吧，学习压力太大了？」'},
  {s:'夜神月',x:'（看不见琉克。正常。）'},
  {s:'吉田',x:'「不过说真的，最近那个基拉，你怎么看？我觉得吧——能一个个弄死罪犯，这人肯定有啥超能力！说不定就在我们身边呢！」'},
  {s:'夜神月',x:'（……这个笨蛋，无意中说中了。）'},
 ],next:'br_apple_2'},
-br_apple_2:{bg:'street',chara:'ryuk',bgm:'l',t:[
+br_apple_2:{bg:'street',chara:'q_ryuk',bgm:'l',t:[
  {s:'',x:'你付了钱，把苹果抛给琉克。他一口咬下，发出满足的怪笑。'},
  {s:'琉克',x:'「唔——好吃。人间的苹果，果然是最棒的。」'},
  {s:'',x:'就在你转身要走时，吉田在身后叫住了你：'},
  {s:'吉田',x:'「诶夜神，等下——刚才有个客人落了个本子在柜台，黑色的。你认识字多，帮我看看这写的啥？」'},
- {s:'',x:'他从柜台下抽出一本黑色的笔记本，封面上印着两个英文单词：\n<span class="bad">DEATH NOTE。</span>'},
- {s:'夜神月',x:'（——！！）'},
+],next:'br_apple_freeze2'},
+br_apple_freeze2:{bg:'street',chara:'q_light_stone',bgm:'l',t:[
+ {s:'',x:'他从柜台下抽出一本黑色的笔记本。'},
+ {s:'',x:'封面上，印着两个英文单词：'},
+ {s:'',x:'<span class="bad">DEATH NOTE。</span>'},
+ {s:'',x:'……'},
+ {s:'夜神月',x:'（…………）'},
 ],next:'br_apple_think'},
-br_apple_think:{bg:'street',chara:'',bgm:'l',t:[
+br_apple_think:{bg:'street',chara:'light',bgm:'l',t:[
  {s:'夜神月',x:'（冷静。冷静。）'},
  {s:'夜神月',x:'（我的笔记，此刻锁在我房间的暗格里。这是<span class="em">第二本</span>？还是——）'},
  {s:'',x:'你的视线扫过便利店的天花板。三个监控探头。其中一个的角度，正对着柜台前你站的位置。'},
@@ -547,7 +613,7 @@ br_apple_think:{bg:'street',chara:'',bgm:'l',t:[
  {label:'不碰它，建议吉田交给警察',hint:'过于谨慎，反而可疑',next:'br_apple_police'},
  {label:'将计就计，反过来利用这个陷阱',hint:'⚠ 把L的钓钩，变成我的鱼饵',next:'br_apple_counter',dark:true},
 ]},
-br_apple_perfect:{bg:'street',chara:'',bgm:'l',t:[
+br_apple_perfect:{bg:'street',chara:'L',bgm:'l',t:[
  {s:'',x:'你笑了一下，很自然地翻开第一页，扫了两眼。'},
  {s:'夜神月',x:'「『名字被写上的人会死』……哈，中二病写的吧。现在的高中生真是。」'},
  {s:'夜神月',x:'「说不定是哪个基拉的狂热粉丝，闲得没事干在模仿。」'},
@@ -561,7 +627,7 @@ br_apple_perfect:{bg:'street',chara:'',bgm:'l',t:[
  {s:'L',x:'「就好像……他<span class="l">已经知道后面写的是什么</span>了。」'},
  {s:'夜神月',x:'（——这个男人，连"完美"本身都能当成证据。）'},
 ],next:'br_apple_aftermath',stats:{sus:6,heart:-4}},
-br_apple_police:{bg:'street',chara:'',bgm:'l',t:[
+br_apple_police:{bg:'street',chara:'L',bgm:'l',t:[
  {s:'夜神月',x:'「我不碰。你也别翻了。」'},
  {s:'吉田',x:'「诶？为啥啊？」'},
  {s:'夜神月',x:'「最近基拉的事闹得这么大，突然出现一本写着『死亡笔记』的本子——万一是什么犯罪证据呢？交给警察比较好。」'},
@@ -674,7 +740,7 @@ br_apple_kill:{bg:'night',day:30,chara:'ryuk',bgm:'write',t:[
  {s:'夜神月',x:'「我知道。」'},
  {s:'',x:'笔尖落下。这一次，没有停顿。'},
 ],next:'br_apple_kill2',stats:{heart:-14,sus:4}},
-br_apple_kill2:{bg:'tv',chara:'',bgm:'l',write:'吉田',t:[
+br_apple_kill2:{bg:'tv',chara:'L',bgm:'l',write:'吉田',t:[
  {s:'',x:'三天后，一名便利店店员在下班途中心脏麻痹身亡。年龄十九岁，无犯罪记录，无病史。'},
  {s:'',x:'（搜查本部。L 盯着那份死亡报告，很久很久没有说话。）'},
  {s:'L',x:'「……夜神局长。这个人，是我为了试探令郎，临时雇用的。」'},
@@ -864,7 +930,7 @@ c3_eyes_temp:{bg:'room',chara:'ryuk',t:[
 ],next:'c3_shiori_intro'},
 
 /* ---------- 原创角色：诗织 ---------- */
-c3_shiori_intro:{bg:'class',day:58,chara:'',bgm:'menu',t:[
+c3_shiori_intro:{bg:'class',day:58,chara:'shiori_think',bgm:'menu',t:[
  {s:'',x:'大学。刑法学的阶梯教室。'},
  {s:'',x:'你的邻座是个总把笔记本折得整整齐齐的女生——<span class="em">高城诗织</span>，法学部一年级，梦想是当检察官。'},
  {s:'诗织',x:'「夜神同学，这里的判例……你怎么看？」'},
@@ -877,14 +943,14 @@ c3_shiori_intro:{bg:'class',day:58,chara:'',bgm:'menu',t:[
  {label:'「你觉得……基拉是正义的吗？」',hint:'试探她',next:'c3_shiori_pull'},
  {label:'转移话题，不谈基拉',hint:'不让她靠近这个话题',next:'c3_shiori_avoid'},
 ]},
-c3_shiori_avoid:{bg:'class',chara:'',t:[
+c3_shiori_avoid:{bg:'class',chara:'shiori',t:[
  {s:'夜神月',x:'「……判例的部分，我觉得应该从量刑标准来看。」'},
  {s:'',x:'你把话题拉回了学术。诗织愣了一下，随即笑了。'},
  {s:'诗织',x:'「夜神同学好认真啊。不过也是，聊这个太危险了，我爸爸说现在讨论基拉的人都要被警察记名字呢。」'},
  {s:'夜神月',x:'（……让她离这一切远一点。这是对她最好的。）'},
  {s:'',x:'但你没有意识到：在这个校园里，「离夜神月近」这件事本身，就已经是危险。'},
 ],next:'c3_naomi'},
-c3_shiori_push:{bg:'class',chara:'',t:[
+c3_shiori_push:{bg:'class',chara:'shiori',t:[
  {s:'夜神月',x:'「基拉只是杀人犯。不管理由多么冠冕堂皇，用私刑代替法律，只会让世界变成更大的地狱。」'},
  {s:'',x:'诗织眨了眨眼，然后笑了。'},
  {s:'诗织',x:'「……果然，夜神同学是这么想的。太好了。」'},
@@ -893,7 +959,7 @@ c3_shiori_push:{bg:'class',chara:'',t:[
  {s:'夜神月',x:'（……最正直的那个。）'},
  {s:'',x:'她说这话的时候，眼睛是亮的。\n而你，第一次在一个人面前，觉得自己的谎言有点重。'},
 ],next:'c3_naomi',stats:{heart:3}},
-c3_shiori_pull:{bg:'class',chara:'',t:[
+c3_shiori_pull:{bg:'class',chara:'shiori_uneasy',t:[
  {s:'夜神月',x:'「诗织，你觉得……基拉是正义的吗？」'},
  {s:'诗织',x:'「诶？」'},
  {s:'诗织',x:'「唔……我不知道。杀人肯定是错的。可是——如果这个世界的法律，本来就抓不到那些最坏的人呢？」'},
@@ -905,7 +971,7 @@ c3_shiori_pull:{bg:'class',chara:'',t:[
 ],next:'c3_naomi',stats:{sup:2,heart:-2}},
 
 /* ---------- 南空直美 ---------- */
-c3_naomi:{bg:'street',day:62,chara:'',bgm:'l',t:[
+c3_naomi:{bg:'street',day:62,chara:'naomi',bgm:'l',t:[
  {s:'',x:'警视厅门口。你替父亲送文件出来，一个穿黑色大衣的女人叫住了你。'},
  {s:'',x:'她的眼睛通红，但站姿笔直得像把刀。'},
  {s:'南空直美',x:'「你是夜神局长的儿子？我叫……<span class="l">时户成美</span>。我的未婚夫，是死在日本的 FBI 探员之一。」'},
@@ -914,7 +980,7 @@ c3_naomi:{bg:'street',day:62,chara:'',bgm:'l',t:[
  {s:'夜神月',x:'（——！）\n（破绽？她发现了什么？）'},
  {s:'夜神月',x:'（无论如何，绝不能让她见到 L。必须先套出她的真名。）'},
 ],next:'c3_naomi2'},
-c3_naomi2:{bg:'street',chara:'',bgm:'l',t:[
+c3_naomi2:{bg:'street',chara:'naomi',bgm:'l',t:[
  {s:'夜神月',x:'「我可以带您去见 L。不过为了确认身份，请您在这份访客登记上，写下真实姓名。」'},
  {s:'',x:'你递出笔和登记板。这是最经典、也最致命的一招。'},
  {s:'南空直美',x:'「……」'},
@@ -928,7 +994,7 @@ c3_naomi2:{bg:'street',chara:'',bgm:'l',t:[
  {label:'退一步：「那我替您转告 L」',hint:'放弃套名，先获取情报',next:'c3_naomi_info'},
  {label:'⚠ 主动警告她：「快离开东京」',hint:'原创路线：救她一命',next:'c3_naomi_save'},
 ]},
-c3_naomi_push:{bg:'street',chara:'',bgm:'write',t:[
+c3_naomi_push:{bg:'street',chara:'naomi_grief',bgm:'write',t:[
  {s:'夜神月',x:'「时户女士，我理解您的警惕。但没有身份确认，L 不会见任何人。」'},
  {s:'夜神月',x:'「而且——如果您真的握有关键情报，越晚交出去，就会有越多人因为基拉而死。」'},
  {s:'',x:'（这是她无法反驳的逻辑。作为一个前执法者，她的责任感就是最大的弱点。）'},
@@ -944,7 +1010,7 @@ c3_naomi_dead:{bg:'night',chara:'ryuk',bgm:'write',write:'南空直美',t:[
  {s:'夜神月',x:'（……这就是神的道路。我早就知道会是这样。）'},
  {s:'',x:'你这样告诉自己，一直到天亮。'},
 ],next:'c3_end',stats:{sus:-6,heart:-16,sup:2}},
-c3_naomi_info:{bg:'street',chara:'',bgm:'l',t:[
+c3_naomi_info:{bg:'street',chara:'naomi_grief',bgm:'l',t:[
  {s:'夜神月',x:'「……我明白了。那么请您把情报告诉我，我一定原封不动地转告 L。」'},
  {s:'南空直美',x:'「不行。这件事，我只能当面对 L 说。」'},
  {s:'',x:'她转身离开了。而你站在原地，第一次感到失控。'},
@@ -952,7 +1018,7 @@ c3_naomi_info:{bg:'street',chara:'',bgm:'l',t:[
  {s:'夜神月',x:'（我必须在她见到 L 之前找到她。可我连她的真名都没有。）'},
  {s:'',x:'三天后，你在电视上看到 L 的搜查本部召开了一次紧急会议。\n<span class="l">而你没有被通知。</span>'},
 ],next:'c3_end',stats:{sus:12,heart:-4}},
-c3_naomi_save:{bg:'street',chara:'light',bgm:'menu',t:[
+c3_naomi_save:{bg:'street',chara:'naomi_grief',bgm:'menu',t:[
  {s:'',x:'你张了张嘴。'},
  {s:'',x:'你本该套出她的名字。这是最优解，你的大脑在零点几秒内就算清了所有步骤。'},
  {s:'',x:'但你听见自己的声音说：'},
