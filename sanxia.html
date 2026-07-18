@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#f3ead8">
+<title>伞下</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700;900&family=Noto+Sans+SC:wght@300;400&display=swap');
+:root{
+  --bg:#f3ead8; --ink:#3a3129; --soft:#8a7c6a; --blush:#b3543c; --tea:#7d8c6b;
+  --line:rgba(58,49,41,.22); --card:rgba(255,252,244,.92);
+}
+body.cursed{
+  --bg:#07080a; --ink:#ddd6c6; --soft:#6d7f92; --blush:#c53a2e; --tea:#8fb3a0;
+  --line:rgba(109,127,146,.3); --card:rgba(7,8,10,.9);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans SC',sans-serif;font-weight:300;
+  user-select:none;-webkit-user-select:none;transition:background 4s;}
+/* 春雨（暖）/ 冷雨（诅咒后变色） */
+#rain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity 2.5s;}
+body.raining #rain{opacity:.4;}
+#grain{position:fixed;inset:-50%;z-index:6;pointer-events:none;opacity:0;transition:opacity 5s;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  animation:grain .4s steps(4) infinite;}
+body.cursed #grain{opacity:.07;}
+@keyframes grain{0%{transform:translate(0,0)}25%{transform:translate(-3%,2%)}50%{transform:translate(2%,-3%)}75%{transform:translate(-2%,-2%)}100%{transform:translate(3%,3%)}}
+#vig{position:fixed;inset:0;z-index:5;pointer-events:none;opacity:0;transition:opacity 5s;
+  background:radial-gradient(ellipse 75% 70% at 50% 46%, transparent 40%, rgba(0,0,0,.92) 100%);}
+body.cursed #vig{opacity:.55;}
+
+/* 标题页 */
+#title{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;justify-content:center;align-items:center;
+  background:var(--bg);transition:opacity 1.2s,background 4s;}
+#title.gone{opacity:0;pointer-events:none;}
+#title .era{font-size:11px;letter-spacing:.6em;color:var(--soft);margin-bottom:20px;}
+#title h1{font-family:'Noto Serif SC',serif;font-weight:900;font-size:clamp(46px,13vw,74px);letter-spacing:.3em;text-indent:.3em;color:var(--ink);}
+#title .sub{font-family:'Noto Serif SC',serif;font-weight:300;font-size:13px;letter-spacing:.55em;color:var(--blush);margin-top:16px;}
+#title .quote{margin-top:34px;font-size:12px;line-height:2.3;letter-spacing:.2em;color:var(--soft);text-align:center;}
+#title .btns{margin-top:44px;}
+.tbtn{appearance:none;background:none;border:1px solid var(--line);color:var(--ink);
+  font:300 13px/1 'Noto Sans SC',sans-serif;letter-spacing:.4em;padding:13px 42px 13px 46px;cursor:pointer;transition:.25s;}
+.tbtn:active,.tbtn:hover{border-color:var(--blush);color:var(--blush);}
+
+/* 幕转场：十二阶（暖版） */
+#chapter{position:fixed;inset:0;z-index:30;display:none;flex-direction:column;justify-content:center;align-items:center;background:var(--bg);transition:background 4s;}
+#chapter.on{display:flex;}
+#chapter .steps{display:flex;flex-direction:column-reverse;gap:5px;margin-bottom:30px;}
+#chapter .steps i{display:block;height:3px;background:var(--line);width:40px;}
+#chapter .steps i.lit{background:var(--tea);}
+#chapter .no{font-family:'Noto Serif SC',serif;font-weight:900;font-size:42px;letter-spacing:.3em;text-indent:.3em;color:var(--ink);}
+#chapter .nm{font-family:'Noto Serif SC',serif;font-weight:300;font-size:15px;letter-spacing:.6em;text-indent:.6em;color:var(--blush);margin-top:14px;}
+#chapter .tm{font-size:10px;letter-spacing:.35em;color:var(--soft);margin-top:20px;}
+
+/* CG */
+#stage{position:fixed;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;padding:0 0 38vh;}
+#cgbox{width:min(92vw,560px);aspect-ratio:4/3;position:relative;opacity:0;transform:scale(.985);transition:opacity 1.1s,transform 1.1s;}
+#cgbox.on{opacity:1;transform:scale(1);}
+#cgbox img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+#cgbox .frame{position:absolute;inset:0;border:1px solid var(--line);}
+#cgbox .ph{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;
+  background:linear-gradient(160deg,rgba(179,84,60,.08),rgba(125,140,107,.1));text-align:center;padding:20px;transition:background 4s;}
+body.cursed #cgbox .ph{background:linear-gradient(160deg,#11151a,#0a0d11 60%,#131017);}
+#cgbox .ph .lb{font-family:'Noto Serif SC',serif;font-size:14px;letter-spacing:.25em;color:var(--blush);line-height:2;}
+#cgbox .ph .fn{font-size:10px;letter-spacing:.12em;color:var(--soft);}
+#cgbox .cap{position:absolute;left:0;right:0;bottom:-24px;text-align:center;font-size:9px;letter-spacing:.3em;color:var(--soft);}
+
+/* 对话框 */
+#dlg{position:fixed;z-index:10;left:0;right:0;bottom:0;padding:0 16px calc(16px + env(safe-area-inset-bottom));display:none;}
+#dlg.on{display:block;}
+#dbox{max-width:640px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-top:2px solid var(--blush);
+  padding:16px 18px 18px;min-height:132px;position:relative;transition:background 4s,border-color 4s;}
+#who{font-family:'Noto Serif SC',serif;font-weight:700;font-size:13px;letter-spacing:.3em;color:var(--blush);margin-bottom:9px;}
+#who:empty{display:none;}
+#txt{font-size:14px;line-height:2.05;letter-spacing:.06em;color:var(--ink);min-height:58px;white-space:pre-wrap;transition:color 4s;}
+#txt .em{color:var(--tea);}
+#txt .bad{color:var(--blush);}
+#txt .paper{color:var(--soft);}
+#next{position:absolute;right:26px;bottom:14px;font-size:10px;color:var(--soft);letter-spacing:.2em;animation:blink 1.4s infinite;display:none;}
+@keyframes blink{0%,100%{opacity:.2}50%{opacity:.9}}
+#choices{max-width:640px;margin:10px auto 0;display:flex;flex-direction:column;gap:9px;}
+.ch{appearance:none;text-align:left;background:var(--card);border:1px solid var(--line);color:var(--ink);
+  font:300 13px/1.7 'Noto Sans SC',sans-serif;letter-spacing:.1em;padding:12px 16px;cursor:pointer;transition:.2s;}
+.ch:hover,.ch:active{border-color:var(--blush);color:var(--blush);}
+
+/* 尾声卡 */
+#endcard{position:fixed;inset:0;z-index:35;display:none;flex-direction:column;justify-content:center;align-items:center;background:var(--bg);padding:26px;transition:background 4s;}
+#endcard.on{display:flex;}
+#endsheet{width:min(92vw,520px);max-height:74vh;overflow-y:auto;border:1px solid var(--line);padding:26px 24px 30px;background:var(--card);transition:background 4s;}
+#endsheet .tag{font-size:10px;letter-spacing:.4em;color:var(--soft);}
+#endsheet h2{font-family:'Noto Serif SC',serif;font-weight:900;font-size:26px;letter-spacing:.4em;margin:12px 0 20px;color:var(--ink);}
+#endsheet .story{font-size:13px;line-height:2.15;letter-spacing:.06em;color:var(--ink);white-space:pre-wrap;opacity:.92;}
+#endsheet .link{margin-top:22px;padding-top:14px;border-top:1px dashed var(--line);font-size:11px;line-height:2.1;letter-spacing:.1em;color:var(--soft);}
+#endBtns{margin-top:20px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+#musicToggle{position:fixed;z-index:20;right:14px;top:calc(12px + env(safe-area-inset-top));appearance:none;border:1px solid var(--line);
+  border-radius:20px;background:var(--card);color:var(--soft);padding:6px 11px;font:300 10px/1 'Noto Sans SC',sans-serif;letter-spacing:.15em;cursor:pointer;display:none;}
+body.playing #musicToggle{display:block;}
+#musicToggle.off{opacity:.4;}
+/* 反转时的闪屏 */
+#flash{position:fixed;inset:0;z-index:50;background:#000;opacity:0;pointer-events:none;transition:opacity .12s;}
+#flash.hit{opacity:1;}
+@media (prefers-reduced-motion: reduce){#grain{animation:none;}#next{animation:none;opacity:.7;}}
+</style>
+</head>
+<body>
+<canvas id="rain"></canvas>
+<div id="grain"></div><div id="vig"></div><div id="flash"></div>
+
+<div id="title">
+  <div class="era">一 九 五 八 · 春</div>
+  <h1>伞 下</h1>
+  <div class="sub">石 桥 · 十 二 阶 · 一 个 约 定</div>
+  <div class="quote">听老辈人讲，从前有座新修的桥。<br>桥上有过一把伞，和两个躲雨的人。</div>
+  <div class="btns"><button class="tbtn" id="btnStart">翻 开</button></div>
+</div>
+
+<div id="chapter"><div class="steps" id="chSteps"></div><div class="no" id="chNo"></div><div class="nm" id="chNm"></div><div class="tm" id="chTm"></div></div>
+<div id="stage"><div id="cgbox"><div class="frame"></div><div class="cap" id="cgCap"></div></div></div>
+<div id="dlg"><div id="dbox"><div id="who"></div><div id="txt"></div><div id="next">▼</div></div><div id="choices"></div></div>
+
+<div id="endcard"><div id="endsheet"><div class="tag" id="eTag"></div><h2 id="eName"></h2><div class="story" id="eStory"></div><div class="link" id="eLink"></div></div>
+  <div id="endBtns"><button class="tbtn" id="btnNext2">前 往 第 二 部</button><button class="tbtn" id="btnHome">合 上</button></div></div>
+
+<button id="musicToggle">♪ 音乐</button>
+
+<script>
+"use strict";
+/* ============================================================
+   《伞下》 —— 「第十三阶」三部曲 · 第一部（1958）
+   表面：年代恋爱视觉小说。实际：诅咒的起点。
+   CG 占位：生成后放入 assets/cg/ 对应文件名即自动替换。
+   ============================================================ */
+const CG = {
+  meet:   {file:'assets/cg/sanxia_meet.webp',   label:'CG · 初遇\n新石桥上，青年把伞举到姑娘头顶', cap:'一九五八 · 谷雨'},
+  steps:  {file:'assets/cg/sanxia_steps.webp',  label:'CG · 数阶\n两人并肩走下十二级台阶，伞歪向一边', cap:'夏'},
+  token:  {file:'assets/cg/sanxia_token.webp',  label:'CG · 信物\n供销社的柜台前，灯光很暖', cap:'秋'},
+  wedding:{file:'assets/cg/sanxia_wedding.webp',label:'CG · 喜服\n红衣新娘对镜，窗外天色渐沉', cap:'冬 · 腊月初八'},
+  sedan:  {file:'assets/cg/sanxia_sedan.webp',  label:'CG · 花轿\n暴雨中的花轿行上石桥，红绸湿透', cap:'—— 桥'},
+  bride:  {file:'assets/ghost/ghost-bride-scare.webp', cap:''},
+};
+const S = {phrase:0, token:0}; // phrase:1「数到十二就到家」 2「我在第十二阶等你」; token:1红头绳 2银簪 3新伞
+const SC = {};
+function N(id,steps){SC[id]=steps;}
+/* —— 第一幕 · 借伞 —— */
+N('c1',[
+ {chapter:['一','第 一 幕 · 借 伞','一九五八 · 谷雨']},
+ {t:`一九五八年，谷雨。\n镇后山的石桥修好了，青石的，十二级台阶，\n是十里八乡头一件大事。\n剪彩那天锣鼓敲到晌午，晌午过后，落了雨。`},
+ {t:`修桥队的年轻石匠<span class="em">程远</span>最后一个收工。\n这桥上每一块石头，都过过他的手。\n他正要跑进雨里，看见桥心站着个姑娘——\n蓝布衫，辫梢一点红，怀里护着一摞借来的书，\n进退不得。`},
+ {who:'程远',t:`「同志——」\n他把自己那把黄油布伞举过去，话在嘴边转了个弯，\n「……借个伞好不好？」\n说完自己先红了脸。\n哪有借伞借给别人的道理。`},
+ {cg:'meet'},
+ {who:'沈晚棠',t:`姑娘愣了一下，笑出了声。\n「哪有你这样借的。」\n她往伞下让了半步，把书抱紧，\n「一起走吧。反正——顺路。」`},
+ {t:`她叫<span class="em">沈晚棠</span>，镇小学的扫盲班教员。\n那天的路其实不顺。\n程远送她到校门口，自己淋着雨走了三里地回工棚，\n一路都在笑。`},
+ {choice:[
+   {label:'（第二天，她亲自来工棚还伞）',go:'c1b'},
+   {label:'（第二天，程远假装去学堂「取」伞）',go:'c1c'},
+ ]},
+]);
+N('c1b',[
+ {t:`第二天雨停了。\n沈晚棠站在工棚外，伞卷得整整齐齐，\n伞骨上还系了一小截晒干的艾草。`},
+ {who:'沈晚棠',t:`「还你。」她把伞递过去，又收回半寸，\n「不过我想好了——下回落雨，我还借。\n省得你没处献殷勤。」`,next:'c2'},
+]);
+N('c1c',[
+ {t:`第二天雨停了。程远蹭到学堂外，\n扒着窗根听了半堂课。\n黑板上写着「人」「家」「回」三个大字。\n沈晚棠隔着窗看见他，粉笔头精准地砸在他脑门上。`},
+ {who:'沈晚棠',t:`「取伞就取伞，鬼鬼祟祟。」\n她把伞塞给他，压低声音，\n「……下回落雨，我还借。」`,next:'c2'},
+]);
+/* —— 第二幕 · 数阶 —— */
+N('c2',[
+ {chapter:['二','第 二 幕 · 数 阶','夏']},
+ {t:`那年夏天雨水多。\n多到全镇的人都看出来了：\n只要天一阴，石桥上准有一把黄油布伞，\n伞下准是两个人，走得比谁都慢。`},
+ {cg:'steps'},
+ {who:'沈晚棠',t:`「程远，我发现个事。」\n她踩着台阶，一级一级往下数，\n「一、二、三……你这桥，下桥正好十二阶。」`},
+ {who:'程远',t:`「那当然。」石匠的腰板挺得笔直，\n「十二个月，一年到头，圆圆满满。\n这是我跟师傅争来的数——原图纸是十三阶，\n我说十三不吉利，愣是改了。」`},
+ {who:'沈晚棠',t:`「迷信。」她嘴上这么说，眼睛却弯起来，\n「不过……十二挺好。」\n她跳下最后一阶，转身朝伞下的人伸出手，\n「以后我们就这么约——」`},
+ {choice:[
+   {label:'「数到十二，就到家了。」',set:()=>{S.phrase=1;},go:'c2b'},
+   {label:'「不管谁先回来，都在第十二阶等。」',set:()=>{S.phrase=2;},go:'c2b'},
+ ]},
+]);
+N('c2b',[
+ {t:`程远把这句话在心里描了一遍又一遍，\n像描一块要下錾子的石料。\n然后他郑重其事地点头：「好。」\n\n从那天起，这成了两个人的暗号。\n雨大的时候，一人数单数，一人数双数，\n数到十二，伞就到了家。`,next:'c3'},
+]);
+/* —— 第三幕 · 信物 —— */
+N('c3',[
+ {chapter:['三','第 三 幕 · 信 物','秋']},
+ {t:`秋收过后，程远揣着攒了半年的工分钱，\n在供销社的柜台前站了整整一个钟头。\n售货员换了三班，他还在看。`},
+ {cg:'token'},
+ {t:`柜台里拢共三样东西配得上她：\n一束<span class="bad">红头绳</span>，一支银簪，\n还有一把崭新的、黑绸面的伞。`},
+ {choice:[
+   {label:'买红头绳（她辫梢那点红，早就该换新的）',set:()=>{S.token=1;},go:'c3a'},
+   {label:'买银簪（成了家，就不梳辫子了）',set:()=>{S.token=2;},go:'c3b'},
+   {label:'买那把新伞（我们的事，是从伞开始的）',set:()=>{S.token=3;},go:'c3c'},
+ ]},
+]);
+N('c3a',[
+ {who:'沈晚棠',t:`「红头绳？」\n她接过去，在手腕上绕了三圈，对着日头看。\n「行啊。等过了门，我就用它扎喜辫。」\n她忽然凑近，声音轻下来，\n「程远，这个我天天戴着。\n<span class="em">你在哪儿，红绳就在哪儿。</span>」`,next:'c3end'},
+]);
+N('c3b',[
+ {who:'沈晚棠',t:`「银簪？」\n她别在发间，左照右照，忽然红了脸。\n「……这是催我快点嫁你呢。」\n她把簪子攥进手心，\n「行。过了门，我天天戴。\n<span class="em">敲三下，我就知道是你回来了。</span>」`,next:'c3end'},
+]);
+N('c3c',[
+ {who:'沈晚棠',t:`「伞？」\n她笑得直不起腰，「彩礼送伞，全镇头一份。」\n笑完了，她把伞抱进怀里，抱得很紧。\n「……可我喜欢。」\n「往后的雨，都得是<span class="em">我们俩</span>一起淋的。」`,next:'c3end'},
+]);
+N('c3end',[
+ {t:`腊月里，两家换了帖。\n婚期定在<span class="paper">腊月初八</span>，\n新房就在桥那头，程远亲手起的三间瓦房。\n\n他说：「以后你从学堂回家，\n过了桥，数到十二，抬头就能看见烟囱。」`,next:'c4'},
+]);
+/* —— 第四幕 · 喜服 —— */
+N('c4',[
+ {chapter:['四','第 四 幕 · 喜 服','冬 · 腊月初八']},
+ {cg:'wedding'},
+ {t:`腊月初八，天没亮就阴着。\n沈晚棠穿上了喜服。红衣裳，红盖头搭在膝上，\n镜子里的人陌生又好看。`},
+ {t:()=>{
+   if(S.token===1)return `她把那束红头绳仔仔细细扎进喜辫，\n在手腕上又绕了三圈。\n「你在哪儿，红绳就在哪儿。」\n她对镜子里的自己说完，自己先笑了。`;
+   if(S.token===2)return `她把银簪端端正正别进发髻，\n对着镜子轻轻敲了三下。\n「敲三下，就知道是你回来了。」\n她对镜子里的自己说完，自己先笑了。`;
+   return `那把黑绸伞就立在嫁妆最上头，\n擦得一尘不染。\n「往后的雨，都是我们俩一起淋。」\n她对镜子里的自己说完，自己先笑了。`;
+ }},
+ {t:`按规矩，新郎要先去邻镇接了族里长辈，\n再回来迎亲。程远天不亮就出的门，\n走前扒着窗根说了三遍：\n<span class="em">「晌午之前，我一定到桥头接你。」</span>`},
+ {t:`晌午，雨来了。\n先是一两点，然后整面天塌下来。\n迎亲的唢呐在雨里呜咽，长辈们商量：\n吉时不能误，先上轿，慢些走，\n新郎顶多在桥头等着了。\n\n盖头落下来。世界变成一小方晃动的红。`},
+ {choice:[
+   {label:'上轿（他说了，桥头等我）',go:'c5'},
+ ]},
+]);
+/* —— 第五幕 · 桥 —— */
+N('c5',[
+ {chapter:['五','第 五 幕 · 桥','—— 雨']},
+ {cg:'sedan'},
+ {t:`花轿起了。\n雨点砸在轿顶上，密得像有人在上头撒豆子。\n晚棠坐在一方红色里，手心全是汗。\n她听见抬轿的人骂天，听见唢呐一声声哑下去，\n听见桥，近了。`},
+ {t:`轿身一斜——上桥了。\n她认得这个坡度。这桥上每一块石头，\n都过过她那个人的手。\n她忽然就不怕了。\n她在心里，一阶一阶，数了起来。`},
+ {t:`<span class="em">一。二。三。</span>\n（程远应该已经在桥头了，披着蓑衣，急得跳脚。）\n<span class="em">四。五。六。</span>\n（新房的烟囱，雨里应该也看得见。）\n<span class="em">七。八。九。</span>\n（过了门，第一件事是把他淋湿的头发擦干。）`},
+ {t:()=>{
+   if(S.token===1)return `<span class="em">十。</span>\n轿帘的缝里，垂进来一截红头绳。\n被雨水泡得发白，晃啊晃。\n她腕上的红绳，好端端地系着。\n<span class="em">十一。</span>\n轿子外面，很安静。\n雨声还在，唢呐没了，抬轿人的脚步声——没了。\n<span class="bad">十二。</span>`;
+   if(S.token===2)return `<span class="em">十。</span>\n「叮。叮。叮。」\n有什么东西敲了三下轿壁，又轻又慢，\n像银簪刮着石头。\n她发间的簪子，好端端地别着。\n<span class="em">十一。</span>\n轿子外面，很安静。\n雨声还在，唢呐没了，抬轿人的脚步声——没了。\n<span class="bad">十二。</span>`;
+   return `<span class="em">十。</span>\n轿顶上的雨声忽然变了。\n嗒、嗒——像有人蹲在上头，慢条斯理地，收伞。\n她的那把黑绸伞，好端端地压在嫁妆里。\n<span class="em">十一。</span>\n轿子外面，很安静。\n雨声还在，唢呐没了，抬轿人的脚步声——没了。\n<span class="bad">十二。</span>`;
+ }},
+ {t:()=>S.phrase===1?
+   `数到十二，就到家了。\n\n轿子稳稳落了地。\n晚棠攥着盖头的手松开了。\n她笑起来，朝外面轻轻问：\n\n「<span class="em">到家了吗？</span>」\n\n没有人应。\n很久很久，一个声音贴着轿帘，\n温温柔柔地答：\n\n<span class="bad">「还差一阶。」</span>`:
+   `不管谁先回来，都在第十二阶等。\n\n轿子稳稳落了地。\n晚棠攥着盖头的手松开了。\n她笑起来，朝外面轻轻问：\n\n「<span class="em">你等到我了吗？</span>」\n\n没有人应。\n很久很久，一个声音贴着轿帘，\n温温柔柔地答：\n\n<span class="bad">「你等的人，在第十三阶。」</span>`,
+  next:'c5x'},
+]);
+N('c5x',[
+ {curse:1},
+ {cg:'bride'},
+ {t:`桥这头，程远浑身是水，扶着轿杆的手在抖。\n四个抬轿人瘫坐在雨里，谁也不敢说话。\n\n轿子是他们一步一步抬过桥的。\n上桥四个人，下桥四个人。\n\n<span class="bad">轿子空了。</span>`},
+ {t:`溪水很浅，浅得根本淹不死人。\n程远在水里捞了七天七夜。\n捞上来一只绣鞋${''}，一方红盖头，\n和他这辈子剩下的所有日子。\n\n第八天，有人看见他一个人站在桥心，\n从怀里摸出什么东西，一阶一阶，数着走。\n\n<span class="em">一。二。三。</span>……\n\n数到十二，他站住了。\n雨里，他把伞，往身后递了过去。`},
+ {t:`没有人接。\n\n那天之后，程远离开了镇子，再没回来。\n只是每年腊月初八，桥头会多一把新伞。\n黑绸面的。\n伞柄朝外，像随时有人会来取。\n\n而桥上开始有了那个传说——\n<span class="paper">雨夜过桥，别数台阶。\n数完十二，就别再听。</span>\n\n因为有个等伞的人，\n把她一生里最幸福的一句话，\n问了一遍，又一遍：`},
+ {t:`<span class="bad">「同学——借个伞好不好？」</span>`,next:'fin'},
+]);
+N('fin',[{ending:1}]);
+/* ============ 引擎 ============ */
+const $=id=>document.getElementById(id);
+let queue=[],qi=0,typing=null,curFull='',waitClick=false;
+function startGame(){S.phrase=0;S.token=0;document.body.classList.remove('cursed');
+  $('title').classList.add('gone');document.body.classList.add('playing');tryMusic();run('c1');}
+function run(id){queue=SC[id];qi=0;step();}
+function step(){
+  if(qi>=queue.length)return;
+  const nd=queue[qi++];
+  if(nd.chapter){showChapter(nd.chapter);return;}
+  if(nd.curse){doCurse();/*继续*/}
+  if(nd.cg){showCG(nd.cg);}
+  if(nd.set)nd.set();
+  if(nd.ending){showEnd();return;}
+  if(nd.choice){showChoices(nd.choice);return;}
+  if(nd.t!==undefined){const html=typeof nd.t==='function'?nd.t():nd.t;
+    say(nd.who||'',html,()=>{ if(nd.next)waitNext(()=>run(nd.next)); else waitNext(step); });return;}
+  step();
+}
+function doCurse(){
+  const f=$('flash');f.classList.add('hit');
+  setTimeout(()=>{document.body.classList.add('cursed');document.body.classList.add('raining');},140);
+  setTimeout(()=>{f.classList.remove('hit');},420);
+}
+function say(who,html,done){
+  $('dlg').classList.add('on');$('choices').innerHTML='';$('next').style.display='none';
+  $('who').textContent=who;const el=$('txt');el.innerHTML='';curFull=html;
+  const tmp=document.createElement('div');tmp.innerHTML=html;
+  const nodes=[];(function walk(n,styles){n.childNodes.forEach(c=>{
+    if(c.nodeType===3){for(const ch of c.textContent)nodes.push({ch,styles});}
+    else walk(c,styles.concat(c.className||''));});})(tmp,[]);
+  let i=0;clearTimeout(typing);
+  (function tick(){
+    if(i>=nodes.length){typing=null;done&&done();return;}
+    const {ch,styles}=nodes[i++];
+    let target=el;for(const s of styles.filter(Boolean)){
+      if(el.lastChild&&el.lastChild.nodeType===1&&el.lastChild.className===s){target=el.lastChild;}
+      else{const sp=document.createElement('span');sp.className=s;el.appendChild(sp);target=sp;}}
+    target.appendChild(document.createTextNode(ch));
+    typing=setTimeout(tick,ch==='\n'?90:30);
+  })();
+}
+function skipType(){if(typing){clearTimeout(typing);typing=null;$('txt').innerHTML=curFull;return true;}return false;}
+function waitNext(cb){$('next').style.display='block';waitClick=()=>{waitClick=false;$('next').style.display='none';cb();};}
+document.addEventListener('pointerdown',e=>{
+  if(e.target.closest('button'))return;
+  if(!document.body.classList.contains('playing'))return;
+  if(skipType())return;
+  if(waitClick)waitClick();
+});
+function showChoices(list){
+  $('next').style.display='none';const box=$('choices');box.innerHTML='';
+  list.forEach(o=>{const b=document.createElement('button');b.className='ch';b.textContent=o.label;
+    b.onclick=()=>{if(o.set)o.set();box.innerHTML='';run(o.go);};box.appendChild(b);});
+}
+function showChapter([no,nm,tm]){
+  $('dlg').classList.remove('on');hideCG();
+  const st=$('chSteps');st.innerHTML='';const total={'一':1,'二':2,'三':3,'四':4,'五':5}[no]||1;
+  for(let i=0;i<5;i++){const b=document.createElement('i');if(i<total)b.classList.add('lit');st.appendChild(b);}
+  $('chNo').textContent=no;$('chNm').textContent=nm;$('chTm').textContent=tm;
+  const c=$('chapter');c.classList.add('on');
+  setTimeout(()=>{c.classList.remove('on');step();},2200);
+}
+function showCG(key){
+  const d=CG[key];const box=$('cgbox');
+  box.querySelectorAll('img,.ph').forEach(n=>n.remove());
+  const img=new Image();img.src=d.file;
+  img.onload=()=>{box.insertBefore(img,box.firstChild);};
+  img.onerror=()=>{const ph=document.createElement('div');ph.className='ph';
+    ph.innerHTML=`<div class="lb">${(d.label||'CG').replace(/\n/g,'<br>')}</div><div class="fn">占位 · 生成后放入 ${d.file}</div>`;
+    box.insertBefore(ph,box.firstChild);};
+  $('cgCap').textContent=d.cap||'';box.classList.add('on');
+}
+function hideCG(){$('cgbox').classList.remove('on');}
+function showEnd(){
+  $('dlg').classList.remove('on');hideCG();
+  $('eTag').textContent='第 一 部 · 终';
+  $('eName').textContent='伞 下';
+  const st=$('eStory');st.textContent='';
+  const txt=`这不是一个恋爱故事。\n这是一个恋爱故事的尸骨。\n\n一九五八年之后，桥上多了一阶。\n一九八七年，会有一个女学生在雨夜走上去。\n她也在等人给她送一把伞。\n\n她们都没有等到。\n\n——除非，有人替她们走完。`;
+  let i=0;(function tk(){if(i<txt.length){st.textContent+=txt[i++];setTimeout(tk,txt[i-1]==='\n'?60:26);}
+    else{$('eLink').textContent='▸ 第二部《第十三阶 · 前夜》：1987年6月13日。她叫林晚。她在桥头等一把黑布伞。';}})();
+  $('eLink').textContent='';
+  $('endcard').classList.add('on');
+}
+/* 音乐（复用正传 BGM，加载失败静默） */
+let bgm=null,musicOn=true;
+function tryMusic(){if(bgm)return;bgm=new Audio('assets/bgm/the_measured_fall.mp3');bgm.loop=true;bgm.volume=.3;bgm.play().catch(()=>{});}
+$('musicToggle').onclick=()=>{musicOn=!musicOn;$('musicToggle').classList.toggle('off',!musicOn);
+  if(bgm){musicOn?bgm.play().catch(()=>{}):bgm.pause();}};
+/* 雨 canvas（颜色随诅咒切换） */
+(function(){
+  const cv=$('rain'),cx=cv.getContext('2d');let W,H,drops=[];
+  function rs(){W=cv.width=innerWidth;H=cv.height=innerHeight;
+    drops=Array.from({length:Math.floor(W/9)},()=>({x:Math.random()*W,y:Math.random()*H,l:8+Math.random()*14,v:9+Math.random()*7}));}
+  rs();addEventListener('resize',rs);
+  const mq=matchMedia('(prefers-reduced-motion: reduce)');
+  (function loop(){
+    cx.clearRect(0,0,W,H);
+    cx.strokeStyle=document.body.classList.contains('cursed')?'rgba(109,127,146,.4)':'rgba(138,124,106,.35)';
+    cx.lineWidth=1;
+    for(const d of drops){cx.beginPath();cx.moveTo(d.x,d.y);cx.lineTo(d.x-1.5,d.y+d.l);cx.stroke();
+      d.y+=d.v;d.x-=.6;if(d.y>H){d.y=-d.l;d.x=Math.random()*W;}}
+    if(!mq.matches)requestAnimationFrame(loop);
+  })();
+})();
+$('btnStart').onclick=startGame;
+$('btnNext2').onclick=()=>{location.href='prequel.html';};
+$('btnHome').onclick=()=>{$('endcard').classList.remove('on');$('title').classList.remove('gone');
+  document.body.classList.remove('playing');document.body.classList.remove('raining');document.body.classList.remove('cursed');};
+</script>
+</body>
+</html>
