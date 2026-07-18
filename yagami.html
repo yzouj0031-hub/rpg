@@ -160,6 +160,19 @@ body.writing #redveil{opacity:1;}
 </div>
 
 <script>
+/* ================= BGM ================= */
+const BGMS={menu:'assets/bgm/the_twelve_o_clock_toll.mp3',write:'assets/bgm/the_measured_fall.mp3',l:'assets/bgm/the_final_deduction.mp3'};
+const bgmEl={};let curBgm=null;
+function bgm(key){
+  if(key===curBgm)return;
+  const prev=curBgm?bgmEl[curBgm]:null;curBgm=key;
+  if(!bgmEl[key]){const a=new Audio(BGMS[key]);a.loop=true;a.volume=0;a.preload='auto';bgmEl[key]=a;}
+  const nxt=bgmEl[key];nxt.play().catch(()=>{});
+  const iv=setInterval(()=>{let done=true;
+    if(prev&&prev!==nxt){prev.volume=Math.max(0,prev.volume-0.06);if(prev.volume>0.01)done=false;else prev.pause();}
+    nxt.volume=Math.min(0.55,nxt.volume+0.05);if(nxt.volume<0.54)done=false;
+    if(done)clearInterval(iv);},90);
+}
 /* ================= 引擎 ================= */
 const $=id=>document.getElementById(id);
 const S={day:1,sus:0,sup:0,heart:100,node:'d1_1',flags:{},chapter:1};
@@ -186,7 +199,8 @@ function go(id){
     if(n.chara){c.className='on '+(n.chara);}else c.className='';}
   if(n.stats){if(setStats(n.stats))return;}
   if(n.end){showEnd(n.end);return;}
-  if(n.write){writeName(n.write,()=>{queue=n.t.slice();qi=0;nextLine(n);});return;}
+  if(n.write){bgm('write');writeName(n.write,()=>{if(n.bgm)bgm(n.bgm);queue=n.t.slice();qi=0;nextLine(n);});return;}
+  if(n.bgm)bgm(n.bgm);
   queue=n.t.slice();qi=0;nextLine(n);
 }
 function nextLine(n){
@@ -241,7 +255,7 @@ function showEnd(key){
               t:[{s:'说话人',x:'文本'}...], choices:[...] | next:'id' | end:'key' | write:'名字' }
    ——以后加章节：直接往 STORY 里追加节点即可 —— */
 const STORY={
-d1_1:{bg:'class',day:1,chara:'',t:[
+d1_1:{bg:'class',day:1,chara:'',bgm:'menu',t:[
  {s:'',x:'第六节课。窗外的天灰得像一张脏抹布。'},
  {s:'',x:'英语老师在讲台上念着十年没换过的教案。你在笔记本上写完了明天模拟考的全部要点——十分钟之前。'},
  {s:'夜神月',x:'（无聊。）\n（这个世界，每一天都在重复同样的腐烂。）'},
@@ -270,7 +284,7 @@ d1_throw:{bg:'street',t:[
  {s:'夜神月',x:'（……如果，万一，那上面写的是真的呢？）\n（这样的东西落在别人手里——）'},
  {s:'',x:'五分钟后，笔记本躺在了你的书包最底层。\n你告诉自己，这是为了「保管」。'},
 ],next:'d1_3'},
-d1_3:{bg:'room',day:1,t:[
+d1_3:{bg:'room',day:1,bgm:'write',t:[
  {s:'',x:'晚上十点。房间里只有台灯亮着。\n笔记本摊开在书桌上，第一页雪白。'},
  {s:'夜神月',x:'（试一下就知道了。写谁？）\n（当然……不能是无辜的人。万一是真的。）'},
  {s:'',x:'电视里正在播新闻：新宿一起劫持人质事件，嫌犯挟持了幼儿园的孩子，警方束手无策。\n嫌犯的名字和脸，占满了整个屏幕。'},
@@ -315,7 +329,7 @@ d5_vision2:{bg:'room',chara:'red',t:[
  {s:'琉克',x:'「收回？哈，为什么？放弃所有权可以，不过那样的话——关于笔记的记忆会全部消失哦。」'},
  {s:'夜神月',x:'（消失……也就是说，现在的我，已经回不去了。）\n（那么，就只剩一条路了。）'},
 ],next:'d5_vision'},
-d5_vision:{bg:'god',chara:'gold',t:[
+d5_vision:{bg:'god',chara:'gold',bgm:'menu',t:[
  {s:'夜神月',x:'「琉克，你来得正好。我已经决定了。」'},
  {s:'夜神月',x:'「我要用这本笔记，<span class="em">清扫这个世界的腐烂</span>。罪犯会一个接一个地消失，人们会意识到——恶行必有报应。」'},
  {s:'夜神月',x:'「犯罪会灭绝。而到那时，剩下的这个善良的新世界里……」'},
@@ -327,7 +341,7 @@ d12_1:{bg:'tv',day:12,t:[
  {s:'',x:'网络上，有人给这个看不见的裁决者起了名字——\n<span class="bad">KIRA（基拉）。</span>'},
  {s:'',x:'支持与恐惧同时在蔓延。而在国际刑警组织的紧急会议上，一个从不露面的男人接下了这个案子。\n代号——<span class="l">L</span>。'},
 ],next:'d12_2',stats:{sup:14,sus:0}},
-d12_2:{bg:'tv',t:[
+d12_2:{bg:'tv',bgm:'l',t:[
  {s:'',x:'傍晚。全频道突然切换成同一个画面：一个坐在桌前的男人，桌牌上写着「린드·L·泰罗」。'},
  {s:'林德·L·泰罗',x:'「我是L。基拉——你所做的事，是史上最恶劣的连续杀人。我一定会抓到你。」'},
  {s:'夜神月',x:'（L……终于出来了吗。正面向我挑战？愚蠢。）'},
@@ -335,7 +349,7 @@ d12_2:{bg:'tv',t:[
  {label:'当场写下他的名字',hint:'敢报上名字挑衅神，就受死吧',next:'d12_trap',dark:true,stats:{heart:-5}},
  {label:'按兵不动',hint:'太顺利了。直播里报全名？可疑',next:'d12_wait'},
 ]},
-d12_trap:{bg:'tv',write:'林德·L·泰罗',t:[
+d12_trap:{bg:'tv',bgm:'l',write:'林德·L·泰罗',t:[
  {s:'',x:'四十秒后，屏幕里的男人捂住胸口，倒了下去。\n你的嘴角刚刚扬起——'},
  {s:'',x:'画面切换。一个哥特花体的<span class="l">「L」</span>占据了整个屏幕。'},
  {s:'L',x:'「……难以置信。真的做到了。刚才那位，是今日本该处刑的死刑犯。<span class="l">我才是L。</span>」'},
@@ -343,13 +357,13 @@ d12_trap:{bg:'tv',write:'林德·L·泰罗',t:[
  {s:'L',x:'「基拉，你在关东。我们，很快会见面的。」'},
  {s:'夜神月',x:'（——被摆了一道！！）'},
 ],next:'d12_after',stats:{sus:18,heart:-4}},
-d12_wait:{bg:'tv',t:[
+d12_wait:{bg:'tv',bgm:'l',t:[
  {s:'',x:'你盯着屏幕，没有动笔。\n一小时后，那档「全国直播」悄无声息地结束了。'},
  {s:'',x:'第二天你查到：那个「林德·L·泰罗」是个替身，而节目只在关东试播——那是一个为你量身定做的陷阱。'},
  {s:'夜神月',x:'（差一点。差一点就把「我在关东」亲手送给他了。）\n（L……你是第一个值得我认真对待的对手。）'},
  {s:'L',x:'（同一时刻，某个房间里）「……没有上钩吗。谨慎、聪明、自负。基拉的画像，越来越清晰了。」'},
 ],next:'d12_after',stats:{sus:6,heart:2}},
-d12_after:{bg:'night',day:14,t:[
+d12_after:{bg:'night',day:14,bgm:'l',t:[
  {s:'',x:'战争开始了。\n看不见的两个人，隔着整个城市对弈。'},
  {s:'',x:'而你注意到：这几天，回家的路上，似乎总有同一双眼睛。\n<span class="l">警方开始调查基拉相关人员的家属了——包括警察厅长官的家人。</span>'},
  {s:'琉克',x:'「呐，月。有个东西……我一直没告诉你。」'},
@@ -369,7 +383,7 @@ d14_refuse:{bg:'night',chara:'gold',t:[
  {s:'夜神月',x:'「名字，我会用<span class="em">头脑</span>拿到。」'},
  {s:'琉克',x:'「……人类，真是有意思啊。」'},
 ],next:'ch1_end'},
-ch1_end:{bg:'god',chara:'gold',t:[
+ch1_end:{bg:'god',chara:'gold',bgm:'menu',t:[
  {s:'',x:'—— 第一章 · 拾获　完 ——'},
  {s:'',x:'L 的包围网正在收紧，FBI 探员已秘密入境。\n下一章：《尾行者》——雷·潘伯的十二天。'},
  {s:'',x:'（第二章制作中——你的选择与数值将被继承。想催更就去找作者。）'},
@@ -392,8 +406,8 @@ broken:{name:'崩<span class="r">坏</span>',tag:'BAD END · 理性归零',story
 
 /* ================= 启动 ================= */
 if(localStorage.getItem('yagami_save'))$('loadBtn').style.display='';
-$('startBtn').onclick=()=>{localStorage.removeItem('yagami_save');$('titleScreen').classList.remove('on');go('d1_1');};
-$('loadBtn').onclick=()=>{if(loadSave()){$('titleScreen').classList.remove('on');
+$('startBtn').onclick=()=>{localStorage.removeItem('yagami_save');$('titleScreen').classList.remove('on');bgm('menu');go('d1_1');};
+$('loadBtn').onclick=()=>{if(loadSave()){$('titleScreen').classList.remove('on');bgm('menu');
   setDay(S.day);setStats({});go(S.node);}};
 </script>
 </body>
