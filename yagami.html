@@ -124,7 +124,10 @@ body.writing #redveil{opacity:1;}
   <div id="chara"><img id="charaImg" alt="" src=""></div>
 
   <div id="hud">
-    <div id="day">第 1 天</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button id="menuBtn" style="appearance:none;border:1px solid #2a2336;background:rgba(18,13,24,.8);color:#8b8398;font-size:11px;letter-spacing:.2em;padding:5px 10px;border-radius:2px;cursor:pointer">☰ 菜单</button>
+      <div id="day">第 1 天</div>
+    </div>
     <div id="stats">
       <div class="stat" id="sSus">L的怀疑<b>0%</b></div>
       <div class="stat" id="sSup">基拉支持率<b>0%</b></div>
@@ -156,15 +159,31 @@ body.writing #redveil{opacity:1;}
 「名字被写上的人类，将会死亡。」</div>
   <div class="btnrow">
     <button class="btn" id="startBtn">拾 起 笔 记</button>
-    <button class="btn" id="loadBtn" style="display:none">读 取 存 档</button>
+    <button class="btn" id="loadBtn" style="display:none">继 续 游 戏</button>
+    <button class="btn" id="chapBtn" style="display:none">选 择 章 节</button>
   </div>
 </div>
 
+<div class="screen" id="menuScreen">
+  <h1 style="font-size:30px">菜 <span class="g">单</span></h1>
+  <div class="btnrow" style="flex-direction:column;width:min(80vw,320px);margin-top:30px">
+    <button class="btn" id="mResume" style="width:100%">继 续 游 戏</button>
+    <button class="btn" id="mChap" style="width:100%">选 择 章 节</button>
+    <button class="btn" id="mTitle" style="width:100%">回 到 标 题</button>
+  </div>
+</div>
+<div class="screen" id="chapScreen">
+  <h1 style="font-size:32px">选 择 <span class="g">章 节</span></h1>
+  <div class="sub">已解锁的章节可以直接开始<br>数值将按该章节起点重置</div>
+  <div id="chapList" style="margin-top:30px;display:flex;flex-direction:column;gap:11px;width:min(88vw,420px)"></div>
+  <button class="btn" id="chapBack" style="margin-top:28px">返 回</button>
+</div>
 <div class="screen" id="endTitle">
   <h1 id="endName"></h1><div class="endtag" id="endTag"></div>
   <div class="story" id="endStory"></div>
   <div class="btnrow">
     <button class="btn" onclick="location.reload()">回 到 标 题</button>
+    <button class="btn" id="endChapBtn">选 择 章 节</button>
   </div>
 </div>
 
@@ -235,13 +254,24 @@ function setChara(who){
   }
 }
 function save(){localStorage.setItem('yagami_save',JSON.stringify(S));}
+/* 章节解锁：玩到哪章就永久解锁哪章 */
+const CHAPTERS=[
+ {id:1,name:'第一章 · 拾获',node:'d1_1',day:1},
+ {id:2,name:'第二章 · 尾行者',node:'c2_1',day:15},
+ {id:3,name:'第三章 · 同一屋檐',node:'c3_1',day:35},
+ {id:4,name:'第四章 · 第二基拉',node:'c4_1',day:70},
+];
+function unlocked(){try{return JSON.parse(localStorage.getItem('yagami_unlocked'))||[1];}catch(e){return [1];}}
+function unlock(n){const u=unlocked();if(!u.includes(n)){u.push(n);localStorage.setItem('yagami_unlocked',JSON.stringify(u));}}
+/* 进入某节点时自动解锁对应章节 */
+function autoUnlock(id){CHAPTERS.forEach(c=>{if(c.node===id)unlock(c.id);});}
 function loadSave(){try{const d=JSON.parse(localStorage.getItem('yagami_save'));if(d){Object.assign(S,d);return true;}}catch(e){}return false;}
 
 let queue=[],qi=0,typing=null,busy=false,curNode=null;
 function go(id){
   const n=STORY[id];
   if(!n){console.error('missing node',id);return;}
-  curNode=id;S.node=id;save();
+  curNode=id;S.node=id;autoUnlock(id);save();
   if(n.day)setDay(n.day);
   if(n.bg)$('app').dataset.bg=n.bg;
   if(n.chara!==undefined)setChara(n.chara);
@@ -301,7 +331,7 @@ function writeName(name,then){
   setTimeout(()=>{dn.classList.remove('on');document.body.classList.remove('writing');then();},2600);
 }
 function showEnd(key){
-  const e=ENDS[key];localStorage.removeItem('yagami_save');
+  const e=ENDS[key];
   $('endName').innerHTML=e.name;$('endTag').textContent=e.tag;$('endStory').textContent=e.story;
   $('endTitle').classList.add('on');
 }
@@ -1376,7 +1406,41 @@ broken:{name:'崩<span class="r">坏</span>',tag:'BAD END · 理性归零',story
 
 /* ================= 启动 ================= */
 if(localStorage.getItem('yagami_save'))$('loadBtn').style.display='';
-$('startBtn').onclick=()=>{localStorage.removeItem('yagami_save');$('titleScreen').classList.remove('on');bgm('menu');go('d1_1');};
+if(unlocked().length>1)$('chapBtn').style.display='';
+$('startBtn').onclick=()=>{localStorage.removeItem('yagami_save');
+  Object.assign(S,{day:1,sus:0,sup:0,heart:100,node:'d1_1',flags:{},chapter:1});
+  $('titleScreen').classList.remove('on');bgm('menu');setDay(1);setStats({});go('d1_1');};
+/* 章节选择 */
+function buildChapList(){
+  const u=unlocked(),box=$('chapList');box.innerHTML='';
+  CHAPTERS.forEach(c=>{
+    const ok=u.includes(c.id);
+    const b=document.createElement('button');
+    b.className='ch'+(ok?'':' dark');
+    b.style.opacity=ok?'1':'.4';
+    b.innerHTML=c.name+(ok?'':'<small>尚未解锁</small>');
+    if(ok)b.onclick=()=>{
+      // 按章节起点给一个合理的初始数值
+      const preset={1:{sus:0,sup:0,heart:100},2:{sus:12,sup:16,heart:88},
+                    3:{sus:26,sup:34,heart:76},4:{sus:38,sup:52,heart:64}}[c.id];
+      Object.assign(S,{day:c.day,node:c.node,flags:{},chapter:c.id},preset);
+      $('sSus').querySelector('b').textContent=S.sus+'%';
+      $('sSup').querySelector('b').textContent=S.sup+'%';
+      $('sHeart').querySelector('b').textContent=S.heart;
+      $('chapScreen').classList.remove('on');$('titleScreen').classList.remove('on');$('endTitle').classList.remove('on');
+      bgm('menu');setDay(c.day);go(c.node);
+    };
+    box.appendChild(b);
+  });
+}
+$('chapBtn').onclick=()=>{buildChapList();$('chapScreen').classList.add('on');};
+$('endChapBtn').onclick=()=>{buildChapList();$('chapScreen').classList.add('on');};
+$('chapBack').onclick=()=>{$('chapScreen').classList.remove('on');};
+/* 游戏内菜单 */
+$('menuBtn').onclick=()=>{$('menuScreen').classList.add('on');};
+$('mResume').onclick=()=>{$('menuScreen').classList.remove('on');};
+$('mChap').onclick=()=>{buildChapList();$('menuScreen').classList.remove('on');$('chapScreen').classList.add('on');};
+$('mTitle').onclick=()=>{location.reload();};
 $('loadBtn').onclick=()=>{if(loadSave()){$('titleScreen').classList.remove('on');bgm('menu');
   setDay(S.day);setStats({});go(S.node);}};
 </script>
