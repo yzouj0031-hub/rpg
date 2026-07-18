@@ -69,6 +69,8 @@ body{color:var(--bone);font-family:'Noto Sans SC',sans-serif;font-weight:300;use
   background:linear-gradient(180deg, rgba(10,7,14,.4), rgba(8,6,11,.96) 30%);
   padding:14px 22px calc(16px + env(safe-area-inset-bottom));
   min-height:34dvh;display:flex;flex-direction:column;}
+#timebar{display:none;height:2px;background:#1a1522;margin:0 0 10px;border-radius:2px;overflow:hidden;}
+#timefill{height:100%;width:100%;background:var(--gold);transition:background .3s;}
 #speaker{font-family:'Noto Serif SC',serif;font-weight:700;font-size:15px;letter-spacing:.25em;
   color:var(--gold);margin-bottom:8px;min-height:22px;}
 #speaker.l{color:var(--l-blue);} #speaker.ryuk{color:var(--blood-hot);} #speaker.sys{color:var(--mist);}
@@ -86,6 +88,9 @@ body{color:var(--bone);font-family:'Noto Sans SC',sans-serif;font-weight:300;use
 
 /* ---------- 效果 ---------- */
 #flash{position:fixed;inset:0;z-index:40;background:#fff;opacity:0;pointer-events:none;transition:opacity .12s;}
+#gazeveil{position:fixed;inset:0;z-index:38;pointer-events:none;opacity:0;transition:opacity 1.1s;
+  background:radial-gradient(ellipse 60% 55% at 50% 50%, transparent 30%, rgba(20,40,60,.55) 100%);
+  box-shadow:inset 0 0 120px rgba(91,127,158,.35);}
 #redveil{position:fixed;inset:0;z-index:39;pointer-events:none;opacity:0;transition:opacity 1.2s;
   background:radial-gradient(ellipse 80% 70% at 50% 50%, transparent 40%, rgba(120,10,10,.35));}
 body.writing #redveil{opacity:1;}
@@ -136,6 +141,7 @@ body.writing #redveil{opacity:1;}
   </div>
 
   <div id="dlg">
+    <div id="timebar"><div id="timefill"></div></div>
     <div id="speaker"></div>
     <div id="text"></div>
     <div id="next">▼ 点击继续</div>
@@ -144,6 +150,7 @@ body.writing #redveil{opacity:1;}
 </div>
 
 <div id="flash"></div><div id="redveil"></div>
+<div id="gazeveil"></div>
 <div id="deathnote"><div id="dn-page"><div id="dn-name"></div><div id="dn-sub">心脏麻痹 · 40秒后</div></div></div>
 
 <div class="screen on" id="titleScreen">
@@ -209,18 +216,22 @@ const S={day:1,sus:0,sup:0,heart:100,node:'d1_1',flags:{},chapter:1};
 function clamp(v){return Math.max(0,Math.min(100,v));}
 /* ── 难度 ── */
 const DIFF={
- 1:{name:'一星 · 体验剧情',mul:.5,heartMul:.5,susCap:100,raid:false,panic:false,tag:'安心看故事，数值波动减半'},
- 3:{name:'三星 · 标准',mul:1,heartMul:1,susCap:100,raid:true,raidAt:85,panic:false,tag:'原作体验，一次失误尚可挽回'},
- 5:{name:'五星 · 地狱',mul:1.6,heartMul:1.6,susCap:100,raid:true,raidAt:62,panic:true,tag:'L的突击审讯 · 理性崩溃会失控 · 一步错，满盘皆输'},
+ 1:{name:'一星 · 体验剧情',mul:.5,heartMul:.5,raid:false,panic:false,timer:0,lethal:false,hideSus:false,gaze:0,
+    tag:'安心看故事 · 无倒计时 · 不会失败'},
+ 3:{name:'三星 · 标准',mul:1,heartMul:1,raid:true,raidAt:80,panic:false,timer:12,lethal:false,hideSus:false,gaze:.18,
+    tag:'限时抉择 · L的突击审讯 · 一次失误尚可挽回'},
+ 5:{name:'五星 · 地狱',mul:1.7,heartMul:1.7,raid:true,raidAt:58,panic:true,timer:6,lethal:true,hideSus:true,gaze:.36,
+    tag:'⚠ 6秒抉择 · 怀疑度不可见 · 致命选项即死 · L无时无刻不在看着你'},
 };
 function dif(){return DIFF[S.diff||3];}
 function setStats(d){ const D=dif();
   if(d.sus)S.sus=clamp(S.sus+(d.sus>0?d.sus*D.mul:d.sus));
   if(d.sup)S.sup=clamp(S.sup+d.sup);
   if(d.heart)S.heart=clamp(S.heart+(d.heart<0?d.heart*D.heartMul:d.heart));
-  $('sSus').querySelector('b').textContent=S.sus+'%';
+  $('sSus').querySelector('b').textContent=dif().hideSus?'？？':(S.sus+'%');
   $('sSup').querySelector('b').textContent=S.sup+'%';
   $('sHeart').querySelector('b').textContent=S.heart;
+  if(d.lethal&&dif().lethal){go('end_caught');return true;}
   if(S.sus>=100){go('end_caught');return true;}
   if(S.heart<=0){go('end_broken');return true;}
   // 五星/三星：怀疑度过高触发 L 的突击审讯
@@ -301,6 +312,36 @@ function go(id){
   if(n.bgm)bgm(n.bgm);
   queue=n.t.slice();qi=0;nextLine(n);
 }
+/* L 的凝视：随机在行间插入压迫感 */
+function maybeGaze(){
+  const g=dif().gaze;
+  if(!g||Math.random()>g/6)return false;
+  const lines=[
+   '（……有人在看你。）',
+   '（你回过头。走廊尽头空无一人。）',
+   '（手机屏幕亮了一下。没有通知。）',
+   '（你数了数今天遇到的陌生人。比昨天多了三个。）',
+   '（窗外对面楼的那扇窗，昨天也是开着的吗？）',
+   '（你忽然想不起来，自己刚才有没有把笔记锁好。）',
+  ];
+  const el=$('text');
+  const div=document.createElement('div');
+  div.style.cssText='margin-top:14px;font-size:13px;color:#5b7f9e;letter-spacing:.15em;opacity:0;transition:opacity 1.2s';
+  div.textContent=lines[Math.floor(Math.random()*lines.length)];
+  el.appendChild(div);
+  requestAnimationFrame(()=>div.style.opacity='.85');
+  // 画面收缩 + 心跳
+  const vg=document.getElementById('gazeveil');
+  vg.style.opacity='1';setTimeout(()=>vg.style.opacity='0',2200);
+  // BGM 瞬间压低再回升，制造"心跳漏一拍"的听感
+  try{const cur=curBgm&&bgmEl[curBgm];
+    if(cur){const v=cur.volume;cur.volume=Math.max(0,v*0.25);
+      let step=0;const iv=setInterval(()=>{step++;cur.volume=Math.min(.55,cur.volume+v*0.18);
+        if(step>6){clearInterval(iv);cur.volume=v;}},110);}
+  }catch(e){}
+  if(navigator.vibrate)navigator.vibrate([40,90,40]);
+  return true;
+}
 function nextLine(n){
   if(qi<queue.length){
     const line=queue[qi++];
@@ -327,21 +368,47 @@ function showLine(sp,html){
   const el=$('text');clearInterval(typing);el.innerHTML='';
   const tmp=document.createElement('div');tmp.innerHTML=html;const plain=tmp.textContent;let i=0;
   typing=setInterval(()=>{i+=2;el.textContent=plain.slice(0,i);
-    if(i>=plain.length){clearInterval(typing);typing=null;el.innerHTML=html;busy=false;$('next').style.display='block';}},17);
+    if(i>=plain.length){clearInterval(typing);typing=null;el.innerHTML=html;busy=false;$('next').style.display='block';
+      if(S.mode!=='end')maybeGaze();}},17);
 }
 $('dlg').addEventListener('click',e=>{
   if(e.target.closest('.ch'))return;
   if(typing){clearInterval(typing);typing=null;const n=STORY[curNode];const line=queue[qi-1];$('text').innerHTML=line.x;busy=false;$('next').style.display='block';return;}
   if(!busy&&$('choices').children.length===0)nextLine(STORY[curNode]);
 });
+let timerRAF=null;
+function stopTimer(){if(timerRAF){cancelAnimationFrame(timerRAF);timerRAF=null;}$('timebar').style.display='none';}
+function startTimer(sec,onOut){
+  const bar=$('timebar'),fill=$('timefill');
+  bar.style.display='block';fill.style.width='100%';fill.style.background='var(--gold)';
+  const t0=performance.now(),ms=sec*1000;
+  (function step(t){
+    const p=Math.max(0,1-(t-t0)/ms);
+    fill.style.width=(p*100)+'%';
+    if(p<.35)fill.style.background='var(--blood-hot)';
+    if(p<=0){stopTimer();onOut();return;}
+    timerRAF=requestAnimationFrame(step);
+  })(t0);
+}
 function showChoices(list){
   $('next').style.display='none';
   const box=$('choices');box.innerHTML='';
   list.forEach(c=>{ if(c.cond&&!c.cond(S))return;
     const b=document.createElement('button');b.className='ch'+(c.dark?' dark':'');
     b.innerHTML=c.label+(c.hint?'<small>'+c.hint+'</small>':'');
-    b.onclick=()=>{ pendingNext=c.next; if(c.stats){if(setStats(c.stats))return;} if(c.flag)S.flags[c.flag]=true; pendingNext=null; go(c.next); };
+    b.onclick=()=>{ stopTimer(); pendingNext=c.next; if(c.stats){if(setStats(c.stats))return;} if(c.flag)S.flags[c.flag]=true; pendingNext=null; go(c.next); };
     box.appendChild(b);});
+  // 限时抉择
+  const n=STORY[curNode],sec=dif().timer;
+  if(n&&n.timed&&sec>0){
+    startTimer(sec,()=>{
+      // 超时＝沉默，选最后一个"沉默/什么都没做"或惩罚
+      const pen=n.timeout||{sus:12,heart:-8};
+      showLine('','<span class="bad">……你沉默了太久。</span>\n（沉默，本身就是一种回答。）');
+      $('choices').innerHTML='';
+      setTimeout(()=>{ if(!setStats(pen)) go(n.timeoutNext||list[list.length-1].next); },1800);
+    });
+  }
 }
 function writeName(name,then){
   document.body.classList.add('writing');
@@ -390,7 +457,7 @@ d1_throw:{bg:'street',t:[
  {s:'夜神月',x:'（……如果，万一，那上面写的是真的呢？）\n（这样的东西落在别人手里——）'},
  {s:'',x:'五分钟后，笔记本躺在了你的书包最底层。\n你告诉自己，这是为了「保管」。'},
 ],next:'d1_3'},
-d1_3:{bg:'room',day:1,bgm:'write',chara:'',t:[
+d1_3:{bg:'room',day:1,bgm:'write',chara:'',timed:1,timeout:{heart:-6},t:[
  {s:'',x:'晚上十点。房间里只有台灯亮着。\n笔记本摊开在书桌上，第一页雪白。'},
  {s:'夜神月',x:'（试一下就知道了。写谁？）\n（当然……不能是无辜的人。万一是真的。）'},
  {s:'',x:'电视里正在播新闻：新宿一起劫持人质事件，嫌犯挟持了幼儿园的孩子，警方束手无策。\n嫌犯的名字和脸，占满了整个屏幕。'},
@@ -876,7 +943,7 @@ c3_1:{bg:'street',day:35,chara:'',bgm:'menu',t:[
  {s:'',x:'典礼结束后，一个弓着背、赤脚穿着帆布鞋的男生，端着咖啡走到你身边。\n他把方糖一颗、两颗、三颗……一直加到第七颗。'},
  {s:'？？？',x:'「夜神月同学。你的致辞……很完美。完美得像是背下来的标准答案。」'},
 ],next:'c3_2'},
-c3_2:{bg:'street',day:35,chara:'L',bgm:'l',t:[
+c3_2:{bg:'street',day:35,chara:'L',bgm:'l',timed:1,timeout:{sus:18,heart:-6},timeoutNext:'c3_silent',t:[
  {s:'',x:'他抬起头。黑眼圈很重的、毫无波澜的眼睛，直直地看着你。'},
  {s:'龙崎',x:'「我叫龙崎。和你一样，是今年的新生代表。」'},
  {s:'龙崎',x:'「有件事，我想只告诉你一个人。」'},
@@ -889,7 +956,7 @@ c3_2:{bg:'street',day:35,chara:'L',bgm:'l',t:[
  {label:'完美的惊讶：「诶？L？那个 L？」',hint:'普通大学生该有的反应',next:'c3_act',stats:{heart:-2}},
  {label:'冷静反问：「你为什么告诉我？」',hint:'反将一军，把问题抛回去',next:'c3_counter'},
  {label:'沉默地看着他，什么都不说',hint:'不给任何数据',next:'c3_silent',stats:{sus:6}},
- {label:'「……我就是基拉。」',hint:'⚠ 原创路线：向 L 坦白。此路一旦踏上，无法回头',next:'c3_confess',dark:true},
+ {label:'「……我就是基拉。」',hint:'⚠ 原创路线：向 L 坦白（五星难度下＝即死）',next:'c3_confess',dark:true,stats:{lethal:1}},
 ]},
 
 /* ---------- 常规应对：演戏 ---------- */
@@ -1060,7 +1127,7 @@ c3_naomi:{bg:'street',day:62,chara:'naomi',bgm:'l',t:[
  {s:'夜神月',x:'（——！）\n（破绽？她发现了什么？）'},
  {s:'夜神月',x:'（无论如何，绝不能让她见到 L。必须先套出她的真名。）'},
 ],next:'c3_naomi2'},
-c3_naomi2:{bg:'street',chara:'naomi',bgm:'l',t:[
+c3_naomi2:{bg:'street',chara:'naomi',bgm:'l',timed:1,timeout:{sus:14},timeoutNext:'c3_naomi_info',t:[
  {s:'夜神月',x:'「我可以带您去见 L。不过为了确认身份，请您在这份访客登记上，写下真实姓名。」'},
  {s:'',x:'你递出笔和登记板。这是最经典、也最致命的一招。'},
  {s:'南空直美',x:'「……」'},
@@ -1189,7 +1256,7 @@ c4_meet:{bg:'street',day:82,chara:'misa',bgm:'menu',t:[
  {s:'弥海砂',x:'「我用死神之眼看到了你的名字哦。放心，我的眼睛只能看见名字和寿命——」'},
  {s:'弥海砂',x:'「而且，我看到了：<span class="bad">基拉大人的头上，没有寿命的数字。</span>那说明你也有笔记，对不对？」'},
 ],next:'c4_misa2'},
-c4_misa2:{bg:'street',chara:'misa_mad',bgm:'menu',t:[
+c4_misa2:{bg:'street',chara:'misa_mad',bgm:'menu',timed:1,timeout:{sus:16,heart:-6},t:[
  {s:'弥海砂',x:'「我一直、一直在找你。因为基拉大人，杀了那个杀死我爸爸妈妈的人。」'},
  {s:'弥海砂',x:'「那个抢劫犯当庭被判无罪。我在电视上看着他笑。」'},
  {s:'弥海砂',x:'「然后基拉大人出现了。他死了。心脏麻痹。」'},
@@ -1225,7 +1292,7 @@ c4_use:{bg:'room',day:85,chara:'misa',bgm:'menu',t:[
  {s:'夜神月',x:'（只要她看他一眼，四十秒后，这场战争就结束了。）'},
  {s:'夜神月',x:'（我赢了。L，你输在——你想不到有人会为了爱，把自己的寿命卖掉一半。）'},
 ],next:'c4_rem'},
-c4_rem:{bg:'night',day:85,chara:'rem',bgm:'l',t:[
+c4_rem:{bg:'night',day:85,chara:'rem',bgm:'l',timed:1,timeout:{heart:-12},t:[
  {s:'',x:'那天夜里，一个白色的、骨节分明的身影出现在你的房间。'},
  {s:'',x:'它只有一只眼睛。它看着你的方式，让琉克都退了半步。'},
  {s:'雷姆',x:'「夜神月。我是海砂的死神，雷姆。」'},
@@ -1414,7 +1481,7 @@ raid_1:{bg:'hq',chara:'L',bgm:'l',t:[
  {s:'L',x:'「我准备了几个问题。请<span class="l">立刻回答</span>——思考时间超过三秒的答案，我不会采信。」'},
  {s:'夜神月',x:'（——突击审讯。他在测我的反射，而不是我的逻辑。）'},
 ],next:'raid_q1'},
-raid_q1:{bg:'hq',chara:'L',bgm:'l',t:[
+raid_q1:{bg:'hq',chara:'L',bgm:'l',timed:1,timeout:{sus:16},t:[
  {s:'L',x:'「第一个问题。」'},
  {s:'L',x:'「如果你是基拉，你现在最想杀的人是谁？」'},
 ],choices:[
@@ -1440,7 +1507,7 @@ raid_q1c:{bg:'hq',chara:'L',bgm:'l',t:[
  {s:'L',x:'「你是从哪里学来的？夜神局长教你的吗？」'},
  {s:'夜神月',x:'（……糟糕。）'},
 ],next:'raid_q2',stats:{sus:10}},
-raid_q2:{bg:'hq',chara:'L',bgm:'l',t:[
+raid_q2:{bg:'hq',chara:'L',bgm:'l',timed:1,timeout:{sus:16},t:[
  {s:'L',x:'「第二个问题。」'},
  {s:'L',x:'「基拉停手过几次。你觉得，他为什么停手？」'},
 ],choices:[
@@ -1466,7 +1533,7 @@ raid_q2c:{bg:'hq',chara:'L',bgm:'l',t:[
  {s:'L',x:'「你昨天还提交过一份很出色的侧写报告。」'},
  {s:'L',x:'「现在却说『我怎么知道』——你在<span class="l">突然变笨</span>。为什么？」'},
 ],next:'raid_q3',stats:{sus:9}},
-raid_q3:{bg:'hq',chara:'L',bgm:'l',t:[
+raid_q3:{bg:'hq',chara:'L',bgm:'l',timed:1,timeout:{sus:16},t:[
  {s:'L',x:'「最后一个问题。」'},
  {s:'',x:'他抬起眼睛，那双没有波澜的眼睛，第一次直直地钉住你。'},
  {s:'L',x:'「<span class="l">你觉得自己是好人吗？</span>」'},
@@ -1565,7 +1632,7 @@ c5_2:{bg:'night',day:96,chara:'ryuk',bgm:'write',t:[
  {s:'琉克',x:'「而且，如果之后再碰到笔记，记忆会全部回来哦。」'},
  {s:'夜神月',x:'（……全部，回来。）'},
 ],next:'c5_3'},
-c5_3:{bg:'room',chara:'light',bgm:'l',t:[
+c5_3:{bg:'room',chara:'light',bgm:'l',timed:1,timeout:{sus:20,heart:-10},t:[
  {s:'夜神月',x:'（这就是唯一的解。）'},
  {s:'夜神月',x:'（放弃记忆的我，是<span class="em">真心相信自己无辜的</span>。）'},
  {s:'夜神月',x:'（L 的观察、测谎、心理侧写，全部会失效——因为我不是在演。我是真的不知道。）'},
@@ -1774,7 +1841,7 @@ function buildChapList(){
                     3:{sus:26,sup:34,heart:76},4:{sus:38,sup:52,heart:64},
                     5:{sus:56,sup:64,heart:52}}[c.id];
       Object.assign(S,{day:c.day,node:c.node,flags:{},chapter:c.id},preset);
-      $('sSus').querySelector('b').textContent=S.sus+'%';
+      $('sSus').querySelector('b').textContent=dif().hideSus?'？？':(S.sus+'%');
       $('sSup').querySelector('b').textContent=S.sup+'%';
       $('sHeart').querySelector('b').textContent=S.heart;
       $('chapScreen').classList.remove('on');$('titleScreen').classList.remove('on');$('endTitle').classList.remove('on');
