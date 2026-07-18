@@ -155,7 +155,7 @@ body.writing #redveil{opacity:1;}
 
 <div class="screen on" id="titleScreen">
   <h1>夜神月<br><span class="g">模拟器</span></h1>
-  <div class="sub">第一章 · 拾获<br>粉丝同人作品 · 仅供个人娱乐</div>
+  <div class="sub">全七章 · 18结局<br>粉丝同人作品 · 仅供个人娱乐<br><span style="color:#c9a84c">v2.0</span></div>
   <div class="story">2003年，深秋。
 你是夜神月——全国模拟考第一，警察厅刑事局局长的儿子，
 一个对这个腐烂的世界感到无可救药地厌倦的高中生。
@@ -2176,6 +2176,11 @@ $('mChap').onclick=()=>{buildChapList();$('menuScreen').classList.remove('on');$
 $('mTitle').onclick=()=>{location.reload();};
 $('loadBtn').onclick=()=>{if(loadSave()){$('titleScreen').classList.remove('on');bgm('menu');
   setDay(S.day);setStats({});go(S.node);}};
+</script>
+<script>
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update()));
+}
 </script>
 </body>
 </html>
