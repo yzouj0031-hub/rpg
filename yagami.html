@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#08060b">
+<title>夜神月模拟器</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700;900&family=Noto+Sans+SC:wght@300;400;500&display=swap');
+:root{
+  --void:#08060b; --ink:#120d18;
+  --gold:#c9a84c;        /* 神性的金 */
+  --blood:#a3231f; --blood-hot:#d64541;
+  --bone:#e2dccf; --dim:#4a4258; --mist:#8b8398;
+  --l-blue:#5b7f9e;      /* L 的冷蓝 */
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--void);overflow:hidden;}
+body{color:var(--bone);font-family:'Noto Sans SC',sans-serif;font-weight:300;user-select:none;}
+#app{position:relative;height:100dvh;max-width:900px;margin:0 auto;overflow:hidden;display:flex;flex-direction:column;}
+
+/* ---------- 场景背景 ---------- */
+#bg{position:absolute;inset:0;transition:background 1.4s ease;
+  background:radial-gradient(ellipse 100% 70% at 50% 0%, #1a1226, var(--void) 70%);}
+#app[data-bg="class"]  #bg{background:linear-gradient(180deg,#2a2438 0%,#181226 55%,var(--void));}
+#app[data-bg="street"] #bg{background:linear-gradient(180deg,#1c1420 0%,#0e0a14 60%,var(--void));}
+#app[data-bg="room"]   #bg{background:radial-gradient(ellipse 90% 60% at 50% 20%, #241a2e, var(--void) 75%);}
+#app[data-bg="night"]  #bg{background:linear-gradient(180deg,#0a0e1e 0%,#0a0714 60%,var(--void));}
+#app[data-bg="tv"]     #bg{background:radial-gradient(ellipse 70% 45% at 50% 35%, #2c1518, var(--void) 75%);}
+#app[data-bg="hq"]     #bg{background:linear-gradient(180deg,#101a24 0%,#0a0e16 60%,var(--void));}
+#app[data-bg="god"]    #bg{background:radial-gradient(ellipse 90% 70% at 50% 30%, #3a2c10, #150e04 75%);}
+/* 窗格光影 */
+#bg::after{content:'';position:absolute;inset:0;opacity:.25;
+  background:repeating-linear-gradient(90deg, transparent 0 90px, rgba(255,255,255,.015) 90px 92px);}
+
+/* ---------- 立绘（剪影占位，之后可换图） ---------- */
+#chara{position:absolute;left:50%;bottom:26dvh;transform:translateX(-50%);
+  width:min(46dvh,300px);height:60dvh;pointer-events:none;
+  opacity:0;transition:opacity .6s, filter .6s;}
+#chara.on{opacity:1;}
+#chara svg{width:100%;height:100%;filter:drop-shadow(0 0 30px rgba(0,0,0,.6));}
+#chara.gold svg path{fill:#3a2f16;} 
+#chara.blue svg path{fill:#16222e;}
+#chara.red  svg path{fill:#2e1212;}
+#chara.gray svg path{fill:#1c1922;}
+
+/* ---------- 顶部状态 ---------- */
+#hud{position:relative;z-index:5;display:flex;justify-content:space-between;align-items:center;
+  padding:calc(10px + env(safe-area-inset-top)) 18px 8px;}
+#day{font-family:'Noto Serif SC',serif;font-weight:700;letter-spacing:.3em;font-size:14px;color:var(--gold);}
+#stats{display:flex;gap:14px;}
+.stat{font-size:10px;letter-spacing:.15em;color:var(--mist);text-align:right;}
+.stat b{display:block;font-family:'Noto Serif SC',serif;font-size:13px;font-weight:500;letter-spacing:.1em;margin-top:2px;}
+#sSus b{color:var(--l-blue);} #sSup b{color:var(--blood-hot);} #sHeart b{color:var(--bone);}
+
+/* ---------- 对话框 ---------- */
+#dlg{position:relative;z-index:6;margin-top:auto;
+  background:linear-gradient(180deg, rgba(10,7,14,.4), rgba(8,6,11,.96) 30%);
+  padding:14px 22px calc(16px + env(safe-area-inset-bottom));
+  min-height:34dvh;display:flex;flex-direction:column;}
+#speaker{font-family:'Noto Serif SC',serif;font-weight:700;font-size:15px;letter-spacing:.25em;
+  color:var(--gold);margin-bottom:8px;min-height:22px;}
+#speaker.l{color:var(--l-blue);} #speaker.ryuk{color:var(--blood-hot);} #speaker.sys{color:var(--mist);}
+#text{font-size:15.5px;line-height:2.05;color:#cfc9bc;white-space:pre-wrap;flex:1;}
+#text .em{color:var(--gold);} #text .bad{color:var(--blood-hot);} #text .l{color:var(--l-blue);}
+#next{align-self:flex-end;font-size:12px;color:var(--dim);letter-spacing:.3em;animation:blink 1.6s infinite;margin-top:6px;}
+@keyframes blink{0%,100%{opacity:.2}50%{opacity:.9}}
+#choices{display:flex;flex-direction:column;gap:9px;padding-top:10px;}
+.ch{appearance:none;border:1px solid #2a2336;background:rgba(18,13,24,.9);color:var(--bone);
+  font-family:'Noto Sans SC',sans-serif;font-weight:300;font-size:14.5px;letter-spacing:.1em;
+  text-align:left;padding:13px 16px;border-radius:2px;cursor:pointer;transition:border-color .2s;}
+.ch:active{border-color:var(--gold);background:rgba(38,30,20,.9);}
+.ch.dark{border-color:#3a1512;} .ch.dark:active{border-color:var(--blood-hot);}
+.ch small{display:block;font-size:11px;color:var(--dim);margin-top:3px;letter-spacing:.15em;}
+
+/* ---------- 效果 ---------- */
+#flash{position:fixed;inset:0;z-index:40;background:#fff;opacity:0;pointer-events:none;transition:opacity .12s;}
+#redveil{position:fixed;inset:0;z-index:39;pointer-events:none;opacity:0;transition:opacity 1.2s;
+  background:radial-gradient(ellipse 80% 70% at 50% 50%, transparent 40%, rgba(120,10,10,.35));}
+body.writing #redveil{opacity:1;}
+#deathnote{position:fixed;inset:0;z-index:45;display:none;align-items:center;justify-content:center;
+  background:rgba(4,3,6,.92);flex-direction:column;gap:26px;}
+#deathnote.on{display:flex;}
+#dn-page{width:min(84vw,420px);background:#0d0b10;border:1px solid #2a2336;padding:30px 26px;position:relative;}
+#dn-page::before{content:'DEATH NOTE';position:absolute;top:10px;left:0;right:0;text-align:center;
+  font-size:10px;letter-spacing:.6em;color:#3a3346;}
+#dn-name{font-family:'Noto Serif SC',serif;font-size:30px;font-weight:700;letter-spacing:.2em;color:var(--bone);
+  text-align:center;margin-top:20px;min-height:46px;border-bottom:1px solid #2a2336;padding-bottom:12px;}
+#dn-name.write{animation:inkin 1.6s steps(12) forwards;}
+@keyframes inkin{from{clip-path:inset(0 100% 0 0);}to{clip-path:inset(0 0 0 0);}}
+#dn-sub{text-align:center;font-size:12px;letter-spacing:.3em;color:var(--dim);margin-top:14px;}
+
+/* ---------- 标题/结局 ---------- */
+.screen{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;
+  background:var(--void);padding:32px;text-align:center;}
+.screen.on{display:flex;}
+.screen h1{font-family:'Noto Serif SC',serif;font-weight:900;font-size:42px;letter-spacing:.28em;color:var(--bone);line-height:1.5;}
+.screen h1 .g{color:var(--gold);} .screen h1 .r{color:var(--blood-hot);}
+.screen .sub{margin-top:16px;font-size:12px;letter-spacing:.35em;color:var(--dim);line-height:2.2;}
+.screen .story{margin-top:24px;max-width:440px;font-size:14px;line-height:2.3;color:#a8a295;text-align:left;white-space:pre-wrap;}
+.screen .btn{margin-top:36px;appearance:none;border:1px solid var(--dim);background:transparent;color:var(--bone);
+  font-family:'Noto Serif SC',serif;font-size:15px;letter-spacing:.5em;padding:13px 30px 13px 36px;cursor:pointer;border-radius:2px;}
+.screen .btn:active{border-color:var(--gold);color:var(--gold);}
+.btnrow{display:flex;gap:12px;margin-top:36px;flex-wrap:wrap;justify-content:center;}
+.btnrow .btn{margin-top:0;}
+#endTitle .endtag{margin-top:10px;font-size:12px;letter-spacing:.4em;color:var(--blood);}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;}}
+</style>
+</head>
+<body>
+<div id="app" data-bg="class">
+  <div id="bg"></div>
+  <div id="chara" class="gray"><svg viewBox="0 0 200 400" xmlns="http://www.w3.org/2000/svg">
+    <path d="M100 20 C 76 20 62 38 62 62 C 62 80 70 92 80 98 L 76 118 C 52 126 40 148 38 180 L 30 320 L 56 320 L 66 220 L 70 396 L 94 396 L 98 260 L 102 260 L 106 396 L 130 396 L 134 220 L 144 320 L 170 320 L 162 180 C 160 148 148 126 124 118 L 120 98 C 130 92 138 80 138 62 C 138 38 124 20 100 20 Z"/>
+  </svg></div>
+
+  <div id="hud">
+    <div id="day">第 1 天</div>
+    <div id="stats">
+      <div class="stat" id="sSus">L的怀疑<b>0%</b></div>
+      <div class="stat" id="sSup">基拉支持率<b>0%</b></div>
+      <div class="stat" id="sHeart">理性<b>100</b></div>
+    </div>
+  </div>
+
+  <div id="dlg">
+    <div id="speaker"></div>
+    <div id="text"></div>
+    <div id="next">▼ 点击继续</div>
+    <div id="choices"></div>
+  </div>
+</div>
+
+<div id="flash"></div><div id="redveil"></div>
+<div id="deathnote"><div id="dn-page"><div id="dn-name"></div><div id="dn-sub">心脏麻痹 · 40秒后</div></div></div>
+
+<div class="screen on" id="titleScreen">
+  <h1>夜神月<br><span class="g">模拟器</span></h1>
+  <div class="sub">第一章 · 拾获<br>粉丝同人作品 · 仅供个人娱乐</div>
+  <div class="story">2003年，深秋。
+你是夜神月——全国模拟考第一，警察厅刑事局局长的儿子，
+一个对这个腐烂的世界感到无可救药地厌倦的高中生。
+
+直到那个下午，
+一本黑色的笔记本，从天而降。
+
+「名字被写上的人类，将会死亡。」</div>
+  <div class="btnrow">
+    <button class="btn" id="startBtn">拾 起 笔 记</button>
+    <button class="btn" id="loadBtn" style="display:none">读 取 存 档</button>
+  </div>
+</div>
+
+<div class="screen" id="endTitle">
+  <h1 id="endName"></h1><div class="endtag" id="endTag"></div>
+  <div class="story" id="endStory"></div>
+  <div class="btnrow">
+    <button class="btn" onclick="location.reload()">回 到 标 题</button>
+  </div>
+</div>
+
+<script>
+/* ================= 引擎 ================= */
+const $=id=>document.getElementById(id);
+const S={day:1,sus:0,sup:0,heart:100,node:'d1_1',flags:{},chapter:1};
+function clamp(v){return Math.max(0,Math.min(100,v));}
+function setStats(d){ if(d.sus)S.sus=clamp(S.sus+d.sus); if(d.sup)S.sup=clamp(S.sup+d.sup); if(d.heart)S.heart=clamp(S.heart+d.heart);
+  $('sSus').querySelector('b').textContent=S.sus+'%';
+  $('sSup').querySelector('b').textContent=S.sup+'%';
+  $('sHeart').querySelector('b').textContent=S.heart;
+  if(S.sus>=100){go('end_caught');return true;}
+  if(S.heart<=0){go('end_broken');return true;}
+  return false;}
+function setDay(n){S.day=n;$('day').textContent='第 '+n+' 天';}
+function save(){localStorage.setItem('yagami_save',JSON.stringify(S));}
+function loadSave(){try{const d=JSON.parse(localStorage.getItem('yagami_save'));if(d){Object.assign(S,d);return true;}}catch(e){}return false;}
+
+let queue=[],qi=0,typing=null,busy=false,curNode=null;
+function go(id){
+  const n=STORY[id];
+  if(!n){console.error('missing node',id);return;}
+  curNode=id;S.node=id;save();
+  if(n.day)setDay(n.day);
+  if(n.bg)$('app').dataset.bg=n.bg;
+  if(n.chara!==undefined){const c=$('chara');
+    if(n.chara){c.className='on '+(n.chara);}else c.className='';}
+  if(n.stats){if(setStats(n.stats))return;}
+  if(n.end){showEnd(n.end);return;}
+  if(n.write){writeName(n.write,()=>{queue=n.t.slice();qi=0;nextLine(n);});return;}
+  queue=n.t.slice();qi=0;nextLine(n);
+}
+function nextLine(n){
+  if(qi<queue.length){
+    const line=queue[qi++];
+    showLine(line.s,line.x);
+  }else{
+    if(n.choices){showChoices(n.choices);}
+    else if(n.next){go(n.next);}
+  }
+}
+function showLine(sp,html){
+  busy=true;
+  const spEl=$('speaker');
+  spEl.textContent=sp||'';
+  spEl.className=sp==='L'?'l':(sp==='琉克'?'ryuk':(sp===''||sp==='——'?'sys':''));
+  $('choices').innerHTML='';$('next').style.display='none';
+  const el=$('text');clearInterval(typing);el.innerHTML='';
+  const tmp=document.createElement('div');tmp.innerHTML=html;const plain=tmp.textContent;let i=0;
+  typing=setInterval(()=>{i+=2;el.textContent=plain.slice(0,i);
+    if(i>=plain.length){clearInterval(typing);typing=null;el.innerHTML=html;busy=false;$('next').style.display='block';}},17);
+}
+$('dlg').addEventListener('click',e=>{
+  if(e.target.closest('.ch'))return;
+  if(typing){clearInterval(typing);typing=null;const n=STORY[curNode];const line=queue[qi-1];$('text').innerHTML=line.x;busy=false;$('next').style.display='block';return;}
+  if(!busy&&$('choices').children.length===0)nextLine(STORY[curNode]);
+});
+function showChoices(list){
+  $('next').style.display='none';
+  const box=$('choices');box.innerHTML='';
+  list.forEach(c=>{ if(c.cond&&!c.cond(S))return;
+    const b=document.createElement('button');b.className='ch'+(c.dark?' dark':'');
+    b.innerHTML=c.label+(c.hint?'<small>'+c.hint+'</small>':'');
+    b.onclick=()=>{ if(c.stats){if(setStats(c.stats))return;} if(c.flag)S.flags[c.flag]=true; go(c.next); };
+    box.appendChild(b);});
+}
+function writeName(name,then){
+  document.body.classList.add('writing');
+  const dn=$('deathnote');dn.classList.add('on');
+  const nm=$('dn-name');nm.textContent=name;nm.classList.remove('write');void nm.offsetWidth;nm.classList.add('write');
+  setTimeout(()=>{$('flash').style.opacity=.9;setTimeout(()=>$('flash').style.opacity=0,130);},1700);
+  setTimeout(()=>{dn.classList.remove('on');document.body.classList.remove('writing');then();},2600);
+}
+function showEnd(key){
+  const e=ENDS[key];localStorage.removeItem('yagami_save');
+  $('endName').innerHTML=e.name;$('endTag').textContent=e.tag;$('endStory').textContent=e.story;
+  $('endTitle').classList.add('on');
+}
+
+/* ================= 第一章剧情 =================
+   节点格式：{ bg, day, chara:'gold|blue|red|gray|', stats:{sus,sup,heart},
+              t:[{s:'说话人',x:'文本'}...], choices:[...] | next:'id' | end:'key' | write:'名字' }
+   ——以后加章节：直接往 STORY 里追加节点即可 —— */
+const STORY={
+d1_1:{bg:'class',day:1,chara:'',t:[
+ {s:'',x:'第六节课。窗外的天灰得像一张脏抹布。'},
+ {s:'',x:'英语老师在讲台上念着十年没换过的教案。你在笔记本上写完了明天模拟考的全部要点——十分钟之前。'},
+ {s:'夜神月',x:'（无聊。）\n（这个世界，每一天都在重复同样的腐烂。）'},
+ {s:'',x:'就在你把视线移回窗外的那一瞬——\n<span class="em">有什么黑色的东西，从天上掉了下去。</span>'},
+],choices:[
+ {label:'放学后去看看',hint:'不过是好奇而已',next:'d1_2'},
+ {label:'无视它',hint:'大概是谁扔的垃圾',next:'d1_ignore'},
+]},
+d1_ignore:{bg:'class',t:[
+ {s:'夜神月',x:'（……与我无关。）'},
+ {s:'',x:'你收回视线。可那一整节课，那个黑色的影子都在你的脑海里坠落。\n一遍，又一遍。'},
+ {s:'',x:'放学铃响的时候，你的脚已经先于你的决定，走向了操场。'},
+],next:'d1_2'},
+d1_2:{bg:'street',t:[
+ {s:'',x:'操场角落的草地上，躺着一本黑色的笔记本。\n封面上印着两个英文单词：\n<span class="em">DEATH NOTE。</span>'},
+ {s:'夜神月',x:'（死亡笔记？……恶趣味的恶作剧。）'},
+ {s:'',x:'你翻开第一页。内页的英文写着使用规则：'},
+ {s:'',x:'<span class="bad">「名字被写在这本笔记上的人类，将会死亡。」\n「书写者必须在脑中浮现对方的长相。」\n「若不指定死因，一律为心脏麻痹。」</span>'},
+],choices:[
+ {label:'带回家',hint:'……写得这么认真的恶作剧，倒是少见',next:'d1_3',stats:{heart:-2}},
+ {label:'扔回原地',hint:'幼稚',next:'d1_throw'},
+]},
+d1_throw:{bg:'street',t:[
+ {s:'',x:'你把笔记本丢回草地，拍了拍手上的灰。'},
+ {s:'',x:'走出十几米，你停下了。'},
+ {s:'夜神月',x:'（……如果，万一，那上面写的是真的呢？）\n（这样的东西落在别人手里——）'},
+ {s:'',x:'五分钟后，笔记本躺在了你的书包最底层。\n你告诉自己，这是为了「保管」。'},
+],next:'d1_3'},
+d1_3:{bg:'room',day:1,t:[
+ {s:'',x:'晚上十点。房间里只有台灯亮着。\n笔记本摊开在书桌上，第一页雪白。'},
+ {s:'夜神月',x:'（试一下就知道了。写谁？）\n（当然……不能是无辜的人。万一是真的。）'},
+ {s:'',x:'电视里正在播新闻：新宿一起劫持人质事件，嫌犯挟持了幼儿园的孩子，警方束手无策。\n嫌犯的名字和脸，占满了整个屏幕。'},
+],choices:[
+ {label:'写下那个名字',hint:'如果是假的，什么都不会发生',next:'d1_write',dark:true},
+ {label:'合上笔记本',hint:'荒唐。我在做什么？',next:'d1_hesitate'},
+]},
+d1_hesitate:{bg:'room',t:[
+ {s:'',x:'你合上了笔记本。\n可电视里传来主播的声音：「嫌犯情绪激动，已开始伤害人质——」'},
+ {s:'夜神月',x:'（如果那些孩子死了……而我本来有可能阻止——）'},
+ {s:'',x:'笔，已经在你的手里了。'},
+],next:'d1_write'},
+d1_write:{bg:'tv',write:'涩井丸拓男',t:[
+ {s:'',x:'四十秒后。\n电视画面剧烈晃动——「嫌犯……嫌犯倒下了！人质正在逃出！重复，人质全部安全——」'},
+ {s:'夜神月',x:'（心脏麻痹。恰好，四十秒。）\n（巧合。一定是巧合——）'},
+ {s:'',x:'你的手在抖。\n但在颤抖的最深处，有一个声音在低语：\n<span class="em">再试一次，就能确定了。</span>'},
+],choices:[
+ {label:'再写一个',hint:'确认，需要两次',next:'d2_1',dark:true,stats:{heart:-6,sup:2}},
+ {label:'今晚到此为止',hint:'我需要冷静',next:'d2_1_calm',stats:{heart:-2}},
+]},
+d2_1_calm:{bg:'room',day:2,t:[
+ {s:'',x:'那一夜你几乎没睡。第二天，你在放学路上「顺便」路过了一起飞车抢劫的现场直播。'},
+ {s:'',x:'第二个名字，是在便利店门口写下的。\n那个人在骑车逃逸的路上，撞上了电线杆。'},
+ {s:'夜神月',x:'（……不是巧合。）'},
+],next:'d2_2'},
+d2_1:{bg:'room',day:2,t:[
+ {s:'',x:'第二个名字，你选了一个正在电视上被通缉的连环杀人犯。\n第二天早上，新闻报道了他在拘留所里心脏麻痹。'},
+ {s:'夜神月',x:'（……不是巧合。）'},
+],next:'d2_2'},
+d2_2:{bg:'room',chara:'red',t:[
+ {s:'',x:'第五天的深夜。你正在笔记上书写今天的第六个名字——'},
+ {s:'？？？',x:'「很勤奋嘛，人类。」'},
+ {s:'',x:'你猛地回头。\n窗边立着一个<span class="bad">两米多高的怪物</span>：皮肤灰黑，眼球突出，咧到耳根的嘴上挂着愉快的笑。'},
+ {s:'琉克',x:'「别紧张。我是死神，琉克。那本笔记原本是我的——不过掉到人间的东西，归捡到的人。」'},
+ {s:'琉克',x:'「我不站在你这边，也不站在追捕你的人那边。我只是……来看好戏的。」'},
+ {s:'夜神月',x:'（死神……原来如此，这份力量是真的。彻彻底底，是真的。）'},
+],choices:[
+ {label:'「正好。我有很多问题要问你。」',hint:'冷静地接受，然后利用',next:'d5_vision',stats:{heart:-4}},
+ {label:'「……你要收回它吗？」',hint:'试探底线',next:'d5_vision2'},
+]},
+d5_vision2:{bg:'room',chara:'red',t:[
+ {s:'琉克',x:'「收回？哈，为什么？放弃所有权可以，不过那样的话——关于笔记的记忆会全部消失哦。」'},
+ {s:'夜神月',x:'（消失……也就是说，现在的我，已经回不去了。）\n（那么，就只剩一条路了。）'},
+],next:'d5_vision'},
+d5_vision:{bg:'god',chara:'gold',t:[
+ {s:'夜神月',x:'「琉克，你来得正好。我已经决定了。」'},
+ {s:'夜神月',x:'「我要用这本笔记，<span class="em">清扫这个世界的腐烂</span>。罪犯会一个接一个地消失，人们会意识到——恶行必有报应。」'},
+ {s:'夜神月',x:'「犯罪会灭绝。而到那时，剩下的这个善良的新世界里……」'},
+ {s:'夜神月',x:'「<span class="em">我，就是神。</span>」'},
+ {s:'琉克',x:'「……哈。果然，人类什么的，最有意思了。」'},
+],next:'d12_1'},
+d12_1:{bg:'tv',day:12,t:[
+ {s:'',x:'十二天。五十二个名字。\n世界开始注意到了：重刑犯接二连三的心脏麻痹，不是天灾。'},
+ {s:'',x:'网络上，有人给这个看不见的裁决者起了名字——\n<span class="bad">KIRA（基拉）。</span>'},
+ {s:'',x:'支持与恐惧同时在蔓延。而在国际刑警组织的紧急会议上，一个从不露面的男人接下了这个案子。\n代号——<span class="l">L</span>。'},
+],next:'d12_2',stats:{sup:14,sus:0}},
+d12_2:{bg:'tv',t:[
+ {s:'',x:'傍晚。全频道突然切换成同一个画面：一个坐在桌前的男人，桌牌上写着「린드·L·泰罗」。'},
+ {s:'林德·L·泰罗',x:'「我是L。基拉——你所做的事，是史上最恶劣的连续杀人。我一定会抓到你。」'},
+ {s:'夜神月',x:'（L……终于出来了吗。正面向我挑战？愚蠢。）'},
+],choices:[
+ {label:'当场写下他的名字',hint:'敢报上名字挑衅神，就受死吧',next:'d12_trap',dark:true,stats:{heart:-5}},
+ {label:'按兵不动',hint:'太顺利了。直播里报全名？可疑',next:'d12_wait'},
+]},
+d12_trap:{bg:'tv',write:'林德·L·泰罗',t:[
+ {s:'',x:'四十秒后，屏幕里的男人捂住胸口，倒了下去。\n你的嘴角刚刚扬起——'},
+ {s:'',x:'画面切换。一个哥特花体的<span class="l">「L」</span>占据了整个屏幕。'},
+ {s:'L',x:'「……难以置信。真的做到了。刚才那位，是今日本该处刑的死刑犯。<span class="l">我才是L。</span>」'},
+ {s:'L',x:'「而且，谢谢你。你证明了两件事：你可以在不接触对方的情况下杀人——以及，这段节目只在<span class="l">关东地区</span>试播。」'},
+ {s:'L',x:'「基拉，你在关东。我们，很快会见面的。」'},
+ {s:'夜神月',x:'（——被摆了一道！！）'},
+],next:'d12_after',stats:{sus:18,heart:-4}},
+d12_wait:{bg:'tv',t:[
+ {s:'',x:'你盯着屏幕，没有动笔。\n一小时后，那档「全国直播」悄无声息地结束了。'},
+ {s:'',x:'第二天你查到：那个「林德·L·泰罗」是个替身，而节目只在关东试播——那是一个为你量身定做的陷阱。'},
+ {s:'夜神月',x:'（差一点。差一点就把「我在关东」亲手送给他了。）\n（L……你是第一个值得我认真对待的对手。）'},
+ {s:'L',x:'（同一时刻，某个房间里）「……没有上钩吗。谨慎、聪明、自负。基拉的画像，越来越清晰了。」'},
+],next:'d12_after',stats:{sus:6,heart:2}},
+d12_after:{bg:'night',day:14,t:[
+ {s:'',x:'战争开始了。\n看不见的两个人，隔着整个城市对弈。'},
+ {s:'',x:'而你注意到：这几天，回家的路上，似乎总有同一双眼睛。\n<span class="l">警方开始调查基拉相关人员的家属了——包括警察厅长官的家人。</span>'},
+ {s:'琉克',x:'「呐，月。有个东西……我一直没告诉你。」'},
+ {s:'琉克',x:'「<span class="bad">死神之眼</span>。只要付出你剩余寿命的一半，你就能看见任何人的名字和寿命。要交易吗？」'},
+],choices:[
+ {label:'「不需要。」',hint:'我的寿命属于新世界，一秒都不给你',next:'d14_refuse'},
+ {label:'「……条件呢？再详细说说」',hint:'情报要先收集，交不交易另说',next:'d14_ask'},
+ {label:'成交',hint:'名字即是力量',next:'end_eyes',dark:true},
+]},
+d14_ask:{bg:'night',chara:'red',t:[
+ {s:'琉克',x:'「哦？不像你会问的话。条件很简单：寿命的一半。现在就能换。」'},
+ {s:'夜神月',x:'「那我拒绝。用一半的『神的寿命』去换一个便利功能？琉克，你把我看得太廉价了。」'},
+ {s:'琉克',x:'「咔咔……我就知道你会这么说。」'},
+],next:'ch1_end'},
+d14_refuse:{bg:'night',chara:'gold',t:[
+ {s:'夜神月',x:'「不需要。我要活着看到新世界的黎明——一秒都不会分给你。」'},
+ {s:'夜神月',x:'「名字，我会用<span class="em">头脑</span>拿到。」'},
+ {s:'琉克',x:'「……人类，真是有意思啊。」'},
+],next:'ch1_end'},
+ch1_end:{bg:'god',chara:'gold',t:[
+ {s:'',x:'—— 第一章 · 拾获　完 ——'},
+ {s:'',x:'L 的包围网正在收紧，FBI 探员已秘密入境。\n下一章：《尾行者》——雷·潘伯的十二天。'},
+ {s:'',x:'（第二章制作中——你的选择与数值将被继承。想催更就去找作者。）'},
+],choices:[
+ {label:'查看本周目结算',next:'end_ch1'},
+]},
+
+/* ---------- 结局 ---------- */
+end_ch1:{end:'ch1'},
+end_eyes:{end:'eyes'},
+end_caught:{end:'caught'},
+end_broken:{end:'broken'},
+};
+const ENDS={
+ch1:{name:'第一章<br><span class="g">完</span>',tag:'To be continued',story:''},
+eyes:{name:'交<span class="r">易</span>',tag:'BAD END · 折寿',story:'你看见了所有人的名字，\n也看见了自己头顶的数字——\n比你计划中的新世界，短了太多。\n\n从这一天起，你不再是执棋的人，\n而是一个和时间赛跑的赌徒。\n死神咧开嘴笑了。\n\n（提示：有些力量的代价，神不该支付。）'},
+caught:{name:'终<span class="r">局</span>',tag:'BAD END · 逮捕',story:'L的怀疑达到了顶点。\n证据链闭合的那个下午，特搜部敲响了夜神家的门。\n\n「夜神月。不，——基拉。」\n那个弓着背的男人蹲在椅子上，\n用没有波澜的声音，念出了你的罪状。\n\n笔记本被没收的瞬间，\n琉克在你耳边轻声说：「玩得很开心哦，月。」'},
+broken:{name:'崩<span class="r">坏</span>',tag:'BAD END · 理性归零',story:'不知道从哪一个名字开始，\n你写字的手不再颤抖，也不再思考。\n\n裁决变成了习惯，习惯变成了饥渴。\n你已经想不起来，最初拿起笔的那个晚上，\n自己想要保护的是什么了。\n\n镜子里的那个人对你微笑。\n你认不出他。'},
+};
+
+/* ================= 启动 ================= */
+if(localStorage.getItem('yagami_save'))$('loadBtn').style.display='';
+$('startBtn').onclick=()=>{localStorage.removeItem('yagami_save');$('titleScreen').classList.remove('on');go('d1_1');};
+$('loadBtn').onclick=()=>{if(loadSave()){$('titleScreen').classList.remove('on');
+  setDay(S.day);setStats({});go(S.node);}};
+</script>
+</body>
+</html>
