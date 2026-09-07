@@ -117,7 +117,8 @@ function makeClient(label) {
     S: {
       fear: 0, minute: 41,
       has: { note: false, battery: false, keycard: false, fuse: false, archive: false, cassette: false, ribbon: false, charm: false, photo: false, umbrella: false },
-      flags: { readWall: false, mirror: 0, guardLog: false, powerOn: false, pianoSolved: false, memorialRead: false, lockerOpen: false, chase: false, doorSeq: false, codeKnown: false, deskEvent: false },
+      flags: { readWall: false, mirror: 0, guardLog: false, powerOn: false, pianoSolved: false, memorialRead: false, lockerOpen: false, chase: false, doorSeq: false, codeKnown: false, deskEvent: false, fuseIn: false },
+      pages: [false, false, false, false, false],
       doorHits: 0, mode: 'title'
     },
     MW: 32, MH: 22,
@@ -168,10 +169,22 @@ assert.equal(guest.game.S.mode, 'play');
 
 guest.game.S.has.note = true;
 guest.game.S.minute = 42;
+guest.game.S.pages[2] = true;
 guest.multi.worldChanged('note');
 await flush();
 assert.equal(host.game.S.has.note, true);
 assert.equal(host.game.S.minute, 42);
+assert.equal(host.game.S.pages[2], true);
+assert.equal(guest.game.S.pages[2], true);
+
+host.game.GHOST.on = true;
+host.game.GHOST.mode = 'patrol';
+host.game.GHOST.x = 9.5;
+host.game.GHOST.y = 20;
+host.multi.worldChanged('patrol');
+await flush();
+assert.equal(guest.game.GHOST.mode, 'patrol');
+assert.ok(Math.abs(guest.game.GHOST.x - 9.5) < 0.01);
 
 guest.game.P.x = 26.25;
 guest.game.P.y = 13.1;

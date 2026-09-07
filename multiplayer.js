@@ -115,6 +115,7 @@
     return {
       has: { ...ctx.S.has },
       flags: { ...ctx.S.flags },
+      pages: Array.isArray(ctx.S.pages) ? ctx.S.pages.map(Boolean) : [],
       doorHits: ctx.S.doorHits,
       minute: ctx.S.minute,
       ghost: {
@@ -131,6 +132,7 @@
     const ctx = NET.ctx;
     if (!ctx || !world || typeof world !== 'object') return;
     const before = { ...ctx.S.has };
+    const beforePages = Array.isArray(ctx.S.pages) ? ctx.S.pages.filter(Boolean).length : 0;
 
     if (world.has && typeof world.has === 'object') {
       for (const key of Object.keys(ctx.S.has)) {
@@ -148,6 +150,11 @@
           if (proposal && !['doorSeq'].includes(key)) ctx.S.flags[key] = ctx.S.flags[key] || world.flags[key];
           else ctx.S.flags[key] = world.flags[key];
         }
+      }
+    }
+    if (Array.isArray(world.pages) && Array.isArray(ctx.S.pages)) {
+      for (let i = 0; i < ctx.S.pages.length; i++) {
+        if (typeof world.pages[i] === 'boolean') ctx.S.pages[i] = proposal ? (ctx.S.pages[i] || world.pages[i]) : world.pages[i];
       }
     }
     ctx.S.doorHits = proposal
@@ -169,6 +176,7 @@
     const labels = { note: '纸条', battery: '电池', keycard: '旧门禁卡', fuse: '陶瓷保险丝', archive: '事故档案', cassette: '旧磁带', ribbon: '红头绳', charm: '平安符', photo: '旧照片', umbrella: '旧伞' };
     const found = Object.keys(before).find(key => !before[key] && ctx.S.has[key]);
     if (found && !NET.host) showHint(`队友找到了：${labels[found] || '关键线索'}`);
+    else if (!NET.host && Array.isArray(world.pages) && Array.isArray(ctx.S.pages) && beforePages < ctx.S.pages.filter(Boolean).length) showHint('队友找到了一页林晚的日记');
   }
 
   function sendWorld(reason = 'sync') {
