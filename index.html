@@ -145,7 +145,9 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 /* 标题 / 结局 */
 .screen{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--void);padding:32px;text-align:center;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .screen>*{flex-shrink:0;}
-#titleFx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.6;}
+#titleFx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.85;}
+#verTag{position:fixed;right:12px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:65;font-size:9px;letter-spacing:.14em;color:#4a544e;pointer-events:none;}
+body.playing #verTag{display:none;}
 #titleScreen>*:not(#titleFx){position:relative;z-index:1;}
 #titleSeal{width:44px;height:64px;border:1px solid rgba(197,58,46,.75);color:var(--blood-hot);
   display:flex;align-items:center;justify-content:center;margin-bottom:20px;
@@ -255,6 +257,7 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 
 <div id="scare" aria-hidden="true"><img src="assets/ghost/ghost-bride-scare.webp" alt=""></div>
 
+<div id="verTag">ver 1.5.0</div>
 <div class="screen on" id="titleScreen">
   <canvas id="titleFx" aria-hidden="true"></canvas>
   <div id="titleSeal">十三</div>
@@ -1130,11 +1133,11 @@ const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.outputEncoding=THREE.sRGBEncoding;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.35;
+renderer.toneMappingExposure=1.62;
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();
-scene.fog=new THREE.FogExp2(0x020404,0.12);
+scene.fog=new THREE.FogExp2(0x04080a,0.072);
 const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.05,60);
 camera.rotation.order='YXZ';scene.add(camera);
 if(window.MULTI)MULTI.bindThree(scene,THREE);
@@ -1457,8 +1460,8 @@ const swingLamp=(function(){const gr=new THREE.Group();gr.position.set(12,1,19.7
   const li=new THREE.PointLight(0xffc98a,.7,4.5,1.7);li.position.y=-.34;gr.add(li);scene.add(gr);return {gr,li,bulb};})();
 
 /* ---- 灯光 ---- */
-scene.add(new THREE.AmbientLight(0x1c2822,0.55));
-scene.add(new THREE.HemisphereLight(0x28383e,0x0e130e,0.45));
+scene.add(new THREE.AmbientLight(0x2c3c36,0.9));
+scene.add(new THREE.HemisphereLight(0x3d505a,0x161c16,0.8));
 const flash=new THREE.SpotLight(0xdcead2,1.6,9,0.55,0.55,1.1);
 flash.castShadow=true;flash.shadow.mapSize.set(1024,1024);
 flash.shadow.camera.near=0.15;flash.shadow.camera.far=12;flash.shadow.bias=-0.004;
@@ -1466,10 +1469,11 @@ flash.position.set(0,0,0);camera.add(flash);
 const ftgt=new THREE.Object3D();ftgt.position.set(0,-0.08,-1);camera.add(ftgt);flash.target=ftgt;
 const lampMat=new THREE.MeshPhongMaterial({color:0x9aa694,emissive:0xd8f0cc,emissiveIntensity:.9});
 const LAMPS=[];
-[[7.5,2.2],[12.5,2.2],[3.5,8.7],[9.5,8.7],[16.5,8.7],[8,11.5],[2.5,2.4],[17.4,2.4],
- [25.5,4],[25.5,8],[26,13],[3.5,16],[13.5,16],[15.5,20]].forEach(p=>{
+/* 分区灯色：主楼冷荧光绿 / 东翼暖旧钨丝 / 地下青冷 */
+[[7.5,2.2,0x9fd6a8],[12.5,2.2,0x9fd6a8],[3.5,8.7,0x9fd6a8],[9.5,8.7,0x9fd6a8],[16.5,8.7,0x9fd6a8],[8,11.5,0x9fd6a8],[2.5,2.4,0xa8d8c0],[17.4,2.4,0x9fc4d8],
+ [25.5,4,0xe0bc82],[25.5,8,0xd8b478],[26,13,0xe0c28e],[29,11,0xd8b478],[3.5,16,0xd8c49a],[13.5,16,0x9ac2c8],[15.5,20,0x8fc4ce],[9,19.6,0x86bcc8]].forEach(p=>{
   const bar=new THREE.Mesh(new THREE.BoxGeometry(.55,.04,.14),lampMat.clone());bar.position.set(p[0],.965,p[1]);scene.add(bar);lampHousing(p[0],p[1]);
-  const li=new THREE.PointLight(0x9fd6a8,.45,4.2,1.6);li.position.set(p[0],.9,p[1]);scene.add(li);
+  const li=new THREE.PointLight(p[2],.72,6.2,1.5);li.position.set(p[0],.9,p[1]);scene.add(li);
   LAMPS.push({bar,li,ph:Math.random()*7});});
 
 /* ---- 洗手间内部 ---- */
@@ -1758,7 +1762,7 @@ const FLAMES=[];
     c2.position.set(p[0],.395,p[1]);c2.castShadow=true;scene.add(c2);
     const fl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTx,color:0xffb45a,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
     fl.position.set(p[0],.47,p[1]);fl.scale.set(.07,.11,1);scene.add(fl);FLAMES.push(fl);});
-  const cl=new THREE.PointLight(0xff9a4a,.85,3.4,1.9);cl.position.set(4,.6,20.2);scene.add(cl);FLAMES.light=cl;
+  const cl=new THREE.PointLight(0xff9a4a,1.25,4.6,1.7);cl.position.set(4,.6,20.2);scene.add(cl);FLAMES.light=cl;
   /* 枯花束 */
   [[3.5,20.35,.4],[4.5,20.3,-.5]].forEach(p=>{const gr=new THREE.Group();
     for(let i=0;i<5;i++){const stem=new THREE.Mesh(new THREE.CylinderGeometry(.004,.006,.22,4),new THREE.MeshPhongMaterial({color:0x4a4030,shininess:4}));
@@ -1782,6 +1786,18 @@ const FLAMES=[];
   const t=new THREE.CanvasTexture(grCv);
   [[5,19.2],[12,20.6],[17.5,19.3]].forEach(p=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(.5,.34),new THREE.MeshPhongMaterial({map:t,shininess:36,specular:0x5c6a70}));
     m.rotation.x=-Math.PI/2;m.rotation.z=Math.random();m.position.set(p[0],.007,p[1]);scene.add(m);});})();
+
+/* ---- 地下通道水面焦散光斑 ---- */
+const CAUSTIC=(function(){const c=document.createElement('canvas');c.width=128;c.height=128;const g=c.getContext('2d');
+  g.fillStyle='rgba(0,0,0,0)';g.clearRect(0,0,128,128);
+  g.strokeStyle='rgba(160,220,225,.6)';g.lineWidth=1.6;
+  for(let i=0;i<20;i++){g.beginPath();g.ellipse(Math.random()*128,Math.random()*128,6+Math.random()*22,4+Math.random()*14,Math.random()*3,0,7);g.stroke();}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(6,1);
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(17,2.1),new THREE.MeshBasicMaterial({map:t,transparent:true,opacity:.1,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
+  m.rotation.x=Math.PI/2;m.position.set(9.5,.995,20);scene.add(m);
+  const m2=new THREE.Mesh(new THREE.PlaneGeometry(17,1.9),m.material);
+  m2.rotation.x=-Math.PI/2;m2.position.set(9.5,.02,20);scene.add(m2);
+  return {t,m};})();
 
 /* ---- 出口指示灯（绿色，微光） ---- */
 (function(){const exCv=document.createElement('canvas');exCv.width=128;exCv.height=48;const g=exCv.getContext('2d');
@@ -1913,7 +1929,7 @@ POST.mat=new THREE.ShaderMaterial({
   ' col.g=texture2D(tD,uv).g;',
   ' col.b=texture2D(tD,uv-d*ca).b;',
   ' float vig=smoothstep(1.0,.32,length(d)*1.35);',
-  ' col*=mix(.42,1.,vig);',
+  ' col*=mix(.60,1.,vig);',
   ' float g=rnd(uv*vec2(1723.,977.)+mod(uT,10.))-.5;',
   ' col+=g*(.035+uF*.05+uDark*.06);',
   ' col=mix(col,vec3(dot(col,vec3(.3,.5,.2)))*vec3(.85,.95,1.05),uDark*.45);',
@@ -1948,9 +1964,9 @@ function render3D(t){
   if(flickT<=0){flickT=Math.random()*4+1;flick=Math.random()<.18?0.35:1;}
   else if(flick<1)flick=Math.min(1,flick+dt*3);
   const lightOn=LIGHT.on?1:0;
-  flash.intensity=(S.has.battery?2.6:1.5)*flick*lightOn;
-  flash.distance=S.has.battery?10:6.5;
-  flash.angle=S.has.battery?0.6:0.48;
+  flash.intensity=(S.has.battery?3.4:2.2)*flick*lightOn;
+  flash.distance=S.has.battery?12:8.5;
+  flash.angle=S.has.battery?0.66:0.55;
   /* 闪电 */
   LTN.t-=dt;
   if(LTN.t<=0){LTN.t=18+Math.random()*30;LTN.v=1;LTN.second=.18+Math.random()*.2;const delay=350+Math.random()*1300;setTimeout(sfxThunder,delay);}
@@ -1958,8 +1974,8 @@ function render3D(t){
   LTN.v*=Math.pow(.02,dt);if(LTN.v<.003)LTN.v=0;
   const under=P.y>=14?.22:1;
   stormLight.intensity=LTN.v*1.1*under;M.G.emissiveIntensity=.7+LTN.v*3.2;
-  LAMPS.forEach(L2=>{const v=(0.44+0.26*Math.sin(t*0.004+L2.ph)+(Math.random()<.01?-.35:0))*flick;
-    L2.li.intensity=Math.max(0,v);L2.bar.material.emissiveIntensity=Math.max(.05,v*2.2);});
+  LAMPS.forEach(L2=>{const v=(0.66+0.28*Math.sin(t*0.004+L2.ph)+(Math.random()<.01?-.4:0))*flick;
+    L2.li.intensity=Math.max(0,v);L2.bar.material.emissiveIntensity=Math.max(.05,v*1.8);});
   swingLamp.gr.rotation.z=Math.sin(t*.0016)*.32;swingLamp.gr.rotation.x=Math.cos(t*.0011)*.12;
   swingLamp.li.intensity=(.55+.2*Math.sin(t*.01))*flick;swingLamp.bulb.material.emissiveIntensity=1.1*flick;
   /* CRT 雪花屏 */
@@ -1972,10 +1988,11 @@ function render3D(t){
   /* 烛光摇曳 */
   FLAMES.forEach((f,i)=>{const w=.06+.02*Math.sin(t*.02+i*2.1)+.008*Math.sin(t*.047+i);f.scale.set(w,w*1.6,1);
     f.position.y=.468+.006*Math.sin(t*.013+i*3);});
-  if(FLAMES.light)FLAMES.light.intensity=.75+.18*Math.sin(t*.021)+Math.random()*.08;
+  if(FLAMES.light)FLAMES.light.intensity=1.1+.22*Math.sin(t*.021)+Math.random()*.1;
   /* 月光光柱与窗外雨幕 */
-  if(SHAFTS.mat)SHAFTS.mat.opacity=.045+LTN.v*.5;
+  if(SHAFTS.mat)SHAFTS.mat.opacity=.08+LTN.v*.5;
   RAINWIN.t.offset.y-=dt*1.6;RAINWIN.m.material.opacity=.06+LTN.v*.3;
+  CAUSTIC.t.offset.x+=dt*.03;CAUSTIC.t.offset.y+=dt*.017;CAUSTIC.m.material.opacity=.08+.04*Math.sin(t*.0016);
   /* 水面 */
   waterMat.map.offset.x+=dt*.015;waterMat.map.offset.y-=dt*.008;waterMat.opacity=.34+.04*Math.sin(t*.0013);
   /* 尘埃 */
@@ -1998,7 +2015,7 @@ function render3D(t){
     /* 她被手电照到的程度：在光锥内且距离够近才清晰 */
     const gdx=GHOST.x-P.x,gdy=GHOST.y-P.y,gd=Math.hypot(gdx,gdy);
     const rel=Math.atan2(gdy,gdx)-P.a;const inCone=Math.max(0,Math.cos(rel)-.55)/.45;
-    const lit=lightOn*inCone*Math.max(0,1-gd/(S.has.battery?9:6))*flick+.28+LTN.v*.8+huntV*.12;
+    const lit=lightOn*inCone*Math.max(0,1-gd/(S.has.battery?10:7))*flick+.4+LTN.v*.8+huntV*.15;
     ghostMat.uniforms.uLit.value+=(Math.min(1.2,lit)-ghostMat.uniforms.uLit.value)*Math.min(1,dt*6);
     veilMat.uniforms.uT.value=t*.001;veilMat.uniforms.uHunt.value=ghostMat.uniforms.uHunt.value;veilMat.uniforms.uLit.value=ghostMat.uniforms.uLit.value;
     VEILS.forEach((v,i)=>{v.rotation.y=Math.sin(t*.0009+i*2)*.5+(i-1)*.4;});
@@ -2266,7 +2283,7 @@ function initCanvasRenderer(){
       const wallH=Math.min(H*1.8,H*.92/corrected),top=(H-wallH)*.5;
       const base=COLORS[tileAt(rx,ry)]||COLORS.W;
       const beam=Math.max(0,1-Math.abs(offset)/(FOV*.58));
-      const fade=Math.max(.12,1-dist/MAX_DIST),light=(.16+fade*.56+beam*fade*.24)*(LIGHT.on?1:.42);
+      const fade=Math.max(.16,1-dist/MAX_DIST),light=(.24+fade*.6+beam*fade*.26)*(LIGHT.on?1:.5);
       const stripe=((Math.floor(rx*5)+Math.floor(ry*5))&1)?.94:1;
       ctx.fillStyle=`rgb(${base[0]*light*stripe|0},${base[1]*light*stripe|0},${base[2]*light*stripe|0})`;
       ctx.fillRect(i*W/rays,top,colW,wallH);
@@ -2311,28 +2328,49 @@ function loop(t){const dt=Math.min(0.05,(t-lastT)/1000||0.016);lastT=t;
 requestAnimationFrame(loop);
 
 /* ============ 开场 ============ */
-/* ---- 标题雨幕 ---- */
+/* ---- 标题雨幕：雨 + 远桥剪影 + 闪电 ---- */
 (function(){
   const c=document.getElementById('titleFx');if(!c)return;
   const g=c.getContext('2d');if(!g)return;
-  let drops=[];
+  let drops=[],flash=0,flashT=3;
   function resize(){c.width=c.clientWidth;c.height=c.clientHeight;
-    drops=Array.from({length:Math.min(110,c.width/9|0)},()=>({x:Math.random()*c.width,y:Math.random()*c.height,l:9+Math.random()*20,s:220+Math.random()*260,o:.1+Math.random()*.3}));}
+    drops=Array.from({length:Math.min(160,c.width/6|0)},()=>({x:Math.random()*c.width,y:Math.random()*c.height,l:10+Math.random()*24,s:260+Math.random()*320,o:.14+Math.random()*.34}));}
   addEventListener('resize',resize);resize();
+  function bridgeSil(alpha){
+    const w=c.width,h=c.height,bx=w*.5,by=h*.985;
+    g.save();g.globalAlpha=alpha;g.fillStyle='#0d1418';
+    g.beginPath();g.moveTo(bx-w*.46,by);
+    for(let i=0;i<=24;i++){const t2=i/24;const x=bx-w*.46+t2*w*.92;
+      const y=by-Math.sin(t2*Math.PI)*h*.16;g.lineTo(x,y);}
+    g.lineTo(bx+w*.46,by);g.closePath();g.fill();
+    g.beginPath();g.moveTo(bx-w*.46,by);
+    for(let i=0;i<=24;i++){const t2=i/24;const x=bx-w*.46+t2*w*.92;
+      const y=by-Math.sin(t2*Math.PI)*h*.16;
+      if(i%2===0)g.fillRect(x-1.2,y-h*.028,2.4,h*.028);}
+    /* 桥心一个提伞的影子 */
+    const gy=by-h*.16;
+    g.fillRect(bx-2.5,gy-h*.075,5,h*.075);
+    g.beginPath();g.ellipse(bx,gy-h*.085,h*.028,h*.012,0,Math.PI,0);g.fill();
+    g.fillRect(bx-.8,gy-h*.1,1.6,h*.02);
+    g.restore();}
   let last=0;
   (function tickRain(t){
     requestAnimationFrame(tickRain);
     if(!$('titleScreen').classList.contains('on')&&!$('endTitle').classList.contains('on'))return;
     const dt=Math.min(.05,(t-last)/1000||.016);last=t;
     g.clearRect(0,0,c.width,c.height);
-    g.strokeStyle='rgba(150,175,190,1)';g.lineWidth=1;
-    drops.forEach(d=>{d.y+=d.s*dt;d.x-=d.s*dt*.09;
+    flashT-=dt;
+    if(flashT<=0){flashT=5+Math.random()*9;flash=1;}
+    flash*=Math.pow(.01,dt);if(flash<.004)flash=0;
+    if(flash>0){g.fillStyle=`rgba(155,175,210,${(flash*.16).toFixed(3)})`;g.fillRect(0,0,c.width,c.height);}
+    bridgeSil(.5+flash*.5);
+    g.lineWidth=1;
+    drops.forEach(d=>{d.y+=d.s*dt;d.x-=d.s*dt*.1;
       if(d.y>c.height){d.y=-d.l;d.x=Math.random()*c.width;}
-      g.globalAlpha=d.o;g.beginPath();g.moveTo(d.x,d.y);g.lineTo(d.x-d.l*.09,d.y+d.l);g.stroke();});
+      g.globalAlpha=d.o+flash*.25;g.strokeStyle='rgba(150,178,196,1)';
+      g.beginPath();g.moveTo(d.x,d.y);g.lineTo(d.x-d.l*.1,d.y+d.l);g.stroke();});
     g.globalAlpha=1;
   })(0);
-  const end=$('endTitle');
-  if(end&&!end.querySelector('#titleFx2')){/* 结局页共用一层静态噪点即可，不加第二个画布 */}
 })();
 /* ---- 本地BGM（用户自选文件，仅本机播放，不上传） ---- */
 $('bgmPickBtn').onclick=()=>$('bgmFile').click();
