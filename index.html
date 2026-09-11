@@ -257,7 +257,7 @@ body.playing #verTag{display:none;}
 
 <div id="scare" aria-hidden="true"><img src="assets/ghost/ghost-bride-scare.webp" alt=""></div>
 
-<div id="verTag">ver 1.5.0</div>
+<div id="verTag">ver 1.6.0</div>
 <div class="screen on" id="titleScreen">
   <canvas id="titleFx" aria-hidden="true"></canvas>
   <div id="titleSeal">十三</div>
@@ -1229,12 +1229,12 @@ const texR=ctex((g,w,hh)=>{ // 地下层潮湿混凝土
   g.fillStyle='rgba(20,42,30,.38)';for(let i=0;i<13;i++){g.beginPath();g.ellipse(R(0,w),R(35,hh),R(4,17),R(8,28),R(-.3,.3),0,7);g.fill();}
   g.fillStyle='rgba(122,76,35,.35)';for(let i=0;i<6;i++)g.fillRect(R(0,w),0,R(1,4),R(42,115));
   speck(g,w,hh,750,'#20251f',.42);});
-const texF=ctex((g,w,hh)=>{ // 地面：水磨石方砖
-  for(let y=0;y<2;y++)for(let x=0;x<2;x++){g.fillStyle=`rgb(${52+R(-6,6)|0},${62+R(-6,6)|0},${56+R(-6,6)|0})`;g.fillRect(x*64,y*64,64,64);}
-  g.strokeStyle='#232c26';g.lineWidth=3;
-  g.strokeRect(0,0,64,64);g.strokeRect(64,0,64,64);g.strokeRect(0,64,64,64);g.strokeRect(64,64,64,64);
-  speck(g,w,hh,900,'#1a211c',.4);speck(g,w,hh,300,'#6e7a70',.2);
-  g.fillStyle='rgba(20,26,20,.3)';for(let i=0;i<5;i++){g.beginPath();g.ellipse(R(0,w),R(0,hh),R(6,18),R(4,10),0,0,7);g.fill();}});
+const texF=ctex((g,w,hh)=>{ // 地面：水磨石小方砖（4×4，弱化格线摆脱格子感）
+  for(let y=0;y<4;y++)for(let x=0;x<4;x++){g.fillStyle=`rgb(${54+R(-7,7)|0},${64+R(-7,7)|0},${58+R(-7,7)|0})`;g.fillRect(x*32,y*32,32,32);}
+  g.strokeStyle='rgba(30,39,33,.55)';g.lineWidth=1.4;
+  for(let i=0;i<=4;i++){g.beginPath();g.moveTo(i*32,0);g.lineTo(i*32,hh);g.stroke();g.beginPath();g.moveTo(0,i*32);g.lineTo(w,i*32);g.stroke();}
+  speck(g,w,hh,900,'#1a211c',.32);speck(g,w,hh,300,'#6e7a70',.18);
+  g.fillStyle='rgba(20,26,20,.28)';for(let i=0;i<5;i++){g.beginPath();g.ellipse(R(0,w),R(0,hh),R(6,18),R(4,10),0,0,7);g.fill();}});
 const texC=ctex((g,w,hh)=>{ // 吊顶
   g.fillStyle='#4c5049';g.fillRect(0,0,w,hh);
   g.strokeStyle='#2c302a';g.lineWidth=2;
@@ -1255,21 +1255,48 @@ const M={
   P:new THREE.MeshPhongMaterial({map:texP,bumpMap:texP,bumpScale:.012,shininess:12,specular:0x3f241b}),
   R:new THREE.MeshPhongMaterial({map:texR,bumpMap:texR,bumpScale:.025,shininess:16,specular:0x48554d}),
 };
-const boxGeo=new THREE.BoxGeometry(1,1,1);
+const WALL_H=1.42;               /* 层高：走廊变竖长比例，摆脱方块感 */
+const boxTall=new THREE.BoxGeometry(1,WALL_H,1);
+const boxLow=new THREE.BoxGeometry(1,1,1);      /* 门与窗保持人体尺度 */
 (function buildWalls(){
-  const counts={};
-  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const ch=MAP[y][x];if(ch!=='.')counts[ch]=(counts[ch]||0)+1;}
+  const LOW=ch=>ch==='D'||ch==='G';
+  const counts={};let lintels=0;
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const ch=MAP[y][x];if(ch!=='.'){counts[ch]=(counts[ch]||0)+1;if(LOW(ch))lintels++;}}
   const m4=new THREE.Matrix4();
   for(const ch in counts){
-    const im=new THREE.InstancedMesh(boxGeo,M[ch]||M.W,counts[ch]);let i=0;
-    for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)if(MAP[y][x]===ch){m4.setPosition(x+.5,.5,y+.5);im.setMatrixAt(i++,m4);}
+    const im=new THREE.InstancedMesh(LOW(ch)?boxLow:boxTall,M[ch]||M.W,counts[ch]);let i=0;
+    for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)if(MAP[y][x]===ch){m4.setPosition(x+.5,LOW(ch)?.5:WALL_H/2,y+.5);im.setMatrixAt(i++,m4);}
     im.castShadow=true;im.receiveShadow=true;
     scene.add(im);}
+  /* 门/窗上方的过梁墙带 */
+  if(lintels){
+    const lg=new THREE.BoxGeometry(1,WALL_H-1,1);
+    const im=new THREE.InstancedMesh(lg,M.W,lintels);let i=0;
+    for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)if(LOW(MAP[y][x])){m4.setPosition(x+.5,(WALL_H+1)/2,y+.5);im.setMatrixAt(i++,m4);}
+    im.castShadow=im.receiveShadow=true;scene.add(im);}
+  /* 墙体外凸角壁柱：打断立方体棱线 */
+  const isWall=(x,y)=>x<0||y<0||x>=MW||y>=MH||MAP[y][x]!=='.';
+  const corners=[];
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){if(MAP[y][x]==='.')continue;
+    [[1,-1],[1,1],[-1,1],[-1,-1]].forEach(([dx,dy])=>{
+      if(!isWall(x+dx,y)&&!isWall(x,y+dy)&&!isWall(x+dx,y+dy))
+        corners.push([x+(dx>0?1:0),y+(dy>0?1:0)]);});}
+  if(corners.length){
+    const pg=new THREE.BoxGeometry(.13,WALL_H,.13);
+    const pMat=new THREE.MeshPhongMaterial({color:0x77776a,shininess:8});
+    const im=new THREE.InstancedMesh(pg,pMat,corners.length);
+    corners.forEach((c,i)=>{m4.setPosition(c[0],WALL_H/2,c[1]);im.setMatrixAt(i,m4);});
+    im.castShadow=im.receiveShadow=true;scene.add(im);}
+  /* 天花横梁：给吊顶加结构节奏 */
+  const beamMat=new THREE.MeshPhongMaterial({color:0x3c4038,shininess:10});
+  for(let x=3.5;x<MW;x+=4){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.16,.1,MH),beamMat);
+    b.position.set(x,WALL_H-.05,MH/2);b.receiveShadow=true;scene.add(b);}
 })();
 const floor=new THREE.Mesh(new THREE.PlaneGeometry(MW,MH),new THREE.MeshPhongMaterial({map:texF,bumpMap:texF,bumpScale:.012,shininess:70,specular:0x50625c}));
 floor.rotation.x=-Math.PI/2;floor.position.set(MW/2,0,MH/2);floor.receiveShadow=true;scene.add(floor);
 const ceil=new THREE.Mesh(new THREE.PlaneGeometry(MW,MH),new THREE.MeshPhongMaterial({map:texC,shininess:2}));
-ceil.rotation.x=Math.PI/2;ceil.position.set(MW/2,1,MH/2);ceil.receiveShadow=true;scene.add(ceil);
+ceil.rotation.x=Math.PI/2;ceil.position.set(MW/2,WALL_H,MH/2);ceil.receiveShadow=true;scene.add(ceil);
 
 /* ---- 摆设 ---- */
 const wood=new THREE.MeshPhongMaterial({color:0x4a3a26,shininess:8});
@@ -1352,7 +1379,7 @@ const sillMat=new THREE.MeshPhongMaterial({color:0xb2ad9c,shininess:22});
 /* 踢脚线（门和储物柜面除外） */
 instanceOnFaces(FACES.filter(f=>f.ch!=='D'&&f.ch!=='L'),new THREE.BoxGeometry(.03,.07,1),trimMat,{offset:()=>({out:.015,side:0,y:.035})});
 /* 顶线 */
-instanceOnFaces(FACES.filter(f=>f.ch!=='D'),new THREE.BoxGeometry(.025,.05,1),trimTop,{offset:()=>({out:.012,side:0,y:.975})});
+instanceOnFaces(FACES.filter(f=>f.ch!=='D'&&f.ch!=='G'),new THREE.BoxGeometry(.025,.05,1),trimTop,{offset:()=>({out:.012,side:0,y:WALL_H-.025})});
 /* 门框：两侧立柱 + 门楣 */
 const doorFaces=FACES.filter(f=>f.ch==='D');
 instanceOnFaces(doorFaces,new THREE.BoxGeometry(.05,.96,.08),frameMat,{per:2,offset:k=>({out:.025,side:k?.44:-.44,y:.48})});
@@ -1365,13 +1392,13 @@ instanceOnFaces(winFaces,new THREE.BoxGeometry(.05,.05,.98),sillMat,{offset:()=>
 const lockFaces=FACES.filter(f=>f.ch==='L');
 const lockerDoor=new THREE.MeshPhongMaterial({color:0x4a565e,shininess:34,specular:0x556670});
 const lockerDark=new THREE.MeshPhongMaterial({color:0x1b2126,shininess:10});
-instanceOnFaces(lockFaces,new THREE.BoxGeometry(.03,.86,.3),lockerDoor,{per:3,shadow:true,offset:k=>{const ajar=(k===1);return {out:ajar?.06:.02,side:(k-1)*.325,y:.47,ry:ajar?.5:0};}});
-instanceOnFaces(lockFaces,new THREE.BoxGeometry(.02,.05,.03),lockerDark,{per:3,offset:k=>({out:k===1?.09:.04,side:(k-1)*.325+.1,y:.5,ry:k===1?.5:0})});
-instanceOnFaces(lockFaces,new THREE.BoxGeometry(.012,.02,.16),lockerDark,{per:6,offset:k=>({out:.037,side:(k%3-1)*.325,y:.72-(k/3|0)*.05})});
+instanceOnFaces(lockFaces,new THREE.BoxGeometry(.03,1.26,.3),lockerDoor,{per:3,shadow:true,offset:k=>{const ajar=(k===1);return {out:ajar?.06:.02,side:(k-1)*.325,y:.68,ry:ajar?.5:0};}});
+instanceOnFaces(lockFaces,new THREE.BoxGeometry(.02,.05,.03),lockerDark,{per:3,offset:k=>({out:k===1?.09:.04,side:(k-1)*.325+.1,y:.62,ry:k===1?.5:0})});
+instanceOnFaces(lockFaces,new THREE.BoxGeometry(.012,.02,.16),lockerDark,{per:6,offset:k=>({out:.037,side:(k%3-1)*.325,y:1.06-(k/3|0)*.06})});
 
 /* ---- 灯具外壳 ---- */
 const housingMat=new THREE.MeshPhongMaterial({color:0x3a3f3a,shininess:40,specular:0x60706a});
-function lampHousing(x,z,w=.62){const h=new THREE.Mesh(new THREE.BoxGeometry(w,.05,.2),housingMat);h.position.set(x,.985,z);scene.add(h);return h;}
+function lampHousing(x,z,w=.62){const h=new THREE.Mesh(new THREE.BoxGeometry(w,.05,.2),housingMat);h.position.set(x,WALL_H-.015,z);scene.add(h);return h;}
 
 /* ---- 可躲藏的铁柜 / 演出服柜 ---- */
 const cabinetMat=new THREE.MeshPhongMaterial({color:0x50574f,shininess:36,specular:0x55625d});
@@ -1453,7 +1480,7 @@ addDecal(texWater,3,.006,6.5,0,1.6,1.2,{rx:-Math.PI/2});addDecal(texWater,13,.00
 addDecal(texWater,25,.006,8.3,0,2,1,{rx:-Math.PI/2});
 
 /* ---- 地下通道吊灯（摇晃） ---- */
-const swingLamp=(function(){const gr=new THREE.Group();gr.position.set(12,1,19.7);
+const swingLamp=(function(){const gr=new THREE.Group();gr.position.set(12,WALL_H,19.7);
   const wire=new THREE.Mesh(new THREE.CylinderGeometry(.006,.006,.28,5),lockerDark);wire.position.y=-.14;gr.add(wire);
   const cage=new THREE.Mesh(new THREE.CylinderGeometry(.06,.045,.1,8,1,true),new THREE.MeshPhongMaterial({color:0x3a3a34,side:THREE.DoubleSide,shininess:30}));cage.position.y=-.32;gr.add(cage);
   const bulb=new THREE.Mesh(new THREE.SphereGeometry(.03,8,6),new THREE.MeshPhongMaterial({color:0xffe6b0,emissive:0xffd28a,emissiveIntensity:1.3}));bulb.position.y=-.33;gr.add(bulb);
@@ -1472,8 +1499,8 @@ const LAMPS=[];
 /* 分区灯色：主楼冷荧光绿 / 东翼暖旧钨丝 / 地下青冷 */
 [[7.5,2.2,0x9fd6a8],[12.5,2.2,0x9fd6a8],[3.5,8.7,0x9fd6a8],[9.5,8.7,0x9fd6a8],[16.5,8.7,0x9fd6a8],[8,11.5,0x9fd6a8],[2.5,2.4,0xa8d8c0],[17.4,2.4,0x9fc4d8],
  [25.5,4,0xe0bc82],[25.5,8,0xd8b478],[26,13,0xe0c28e],[29,11,0xd8b478],[3.5,16,0xd8c49a],[13.5,16,0x9ac2c8],[15.5,20,0x8fc4ce],[9,19.6,0x86bcc8]].forEach(p=>{
-  const bar=new THREE.Mesh(new THREE.BoxGeometry(.55,.04,.14),lampMat.clone());bar.position.set(p[0],.965,p[1]);scene.add(bar);lampHousing(p[0],p[1]);
-  const li=new THREE.PointLight(p[2],.72,6.2,1.5);li.position.set(p[0],.9,p[1]);scene.add(li);
+  const bar=new THREE.Mesh(new THREE.BoxGeometry(.55,.04,.14),lampMat.clone());bar.position.set(p[0],WALL_H-.045,p[1]);scene.add(bar);lampHousing(p[0],p[1]);
+  const li=new THREE.PointLight(p[2],.72,6.2,1.5);li.position.set(p[0],WALL_H-.14,p[1]);scene.add(li);
   LAMPS.push({bar,li,ph:Math.random()*7});});
 
 /* ---- 洗手间内部 ---- */
@@ -1518,8 +1545,8 @@ const LAMPS=[];
     new THREE.MeshPhongMaterial({map:mirTx,shininess:120,specular:0xbfd4dd,emissive:0x0a141a,emissiveIntensity:.55}));
   mirror.rotation.y=Math.PI/2;mirror.position.set(16.03,.66,2.9);scene.add(mirror);
   /* 冷色顶灯（会跟其它日光灯一起闪烁） */
-  const wcBar=bx(.4,.03,.12,lampMat.clone(),17.5,.985,2.3);
-  const wcLi=new THREE.PointLight(0x9fc4d8,.5,4.5,1.7);wcLi.position.set(17.5,.88,2.3);scene.add(wcLi);
+  const wcBar=bx(.4,.03,.12,lampMat.clone(),17.5,WALL_H-.015,2.3);
+  const wcLi=new THREE.PointLight(0x9fc4d8,.5,4.5,1.7);wcLi.position.set(17.5,WALL_H-.12,2.3);scene.add(wcLi);
   LAMPS.push({bar:wcBar,li:wcLi,ph:Math.random()*7});
   /* 隔间里的干涸血渍 */
   const stCv=document.createElement('canvas');stCv.width=64;stCv.height=64;
@@ -1773,10 +1800,10 @@ const FLAMES=[];
 })();
 /* 垂坠电缆（悬链线） */
 (function(){const cableMat=new THREE.MeshPhongMaterial({color:0x1c1e20,shininess:30});
-  [[[1.5,.98,18.25],[4.5,.7,18.3],[7.5,.98,18.2]],
-   [[7.5,.98,18.2],[10.5,.74,18.35],[13.5,.98,18.25]],
-   [[6.5,.98,19.6],[10,.66,19.75],[13.5,.98,19.6]],
-   [[20.5,.98,16.4],[23,.78,16.5],[25.5,.98,16.4]]].forEach(pts=>{
+  [[[1.5,1.38,18.25],[4.5,1.10,18.3],[7.5,1.38,18.2]],
+   [[7.5,1.38,18.2],[10.5,1.14,18.35],[13.5,1.38,18.25]],
+   [[6.5,1.38,19.6],[10,1.06,19.75],[13.5,1.38,19.6]],
+   [[20.5,1.38,16.4],[23,1.18,16.5],[25.5,1.38,16.4]]].forEach(pts=>{
     const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],p[1],p[2])));
     const tube=new THREE.Mesh(new THREE.TubeGeometry(curve,20,.013,5),cableMat);tube.castShadow=true;scene.add(tube);});})();
 /* 排水篦子 */
@@ -1806,8 +1833,8 @@ const CAUSTIC=(function(){const c=document.createElement('canvas');c.width=128;c
   const t=new THREE.CanvasTexture(exCv);t.encoding=THREE.sRGBEncoding;
   const mk=(x,y,z,ry)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(.4,.15),new THREE.MeshPhongMaterial({map:t,emissive:0x2c7a4a,emissiveMap:t,emissiveIntensity:1.1,shininess:10}));
     m.position.set(x,y,z);m.rotation.y=ry;scene.add(m);};
-  mk(8,.9,12.97,Math.PI);mk(9.5,.9,10.03,0);
-  const gl=new THREE.PointLight(0x3fae6a,.4,2.6,2);gl.position.set(8,.85,12.6);scene.add(gl);})();
+  mk(8,1.13,12.97,Math.PI);mk(9.5,1.1,10.03,0);
+  const gl=new THREE.PointLight(0x3fae6a,.4,2.6,2);gl.position.set(8,1.05,12.6);scene.add(gl);})();
 
 /* ---- 储物柜区长凳 + 走廊消防栓箱 ---- */
 instMulti([
@@ -1950,7 +1977,7 @@ function render3D(t){
   const moving=playerMoving&&!HIDE.on;
   if(moving)bobT+=dt*(STAM.running?11.5:7.5);
   const bobA=moving?(STAM.running?.02:.011):0;
-  const baseY=HIDE.on?(HIDE.kind==='desk'?0.19:0.47):0.5;
+  const baseY=HIDE.on?(HIDE.kind==='desk'?0.19:0.52):0.58;
   const fear=S.fear/100;
   camera.position.set(P.x+Math.cos(P.a+Math.PI/2)*Math.sin(bobT*.5)*bobA*.6,baseY+Math.sin(bobT)*bobA+Math.sin(t*.0011)*.004,P.y+Math.sin(P.a+Math.PI/2)*Math.sin(bobT*.5)*bobA*.6);
   camRoll+=((Math.sin(bobT*.5)*bobA*.5+(Math.random()-.5)*.006*fear)-camRoll)*Math.min(1,dt*8);
@@ -2280,7 +2307,7 @@ function initCanvasRenderer(){
       while(dist<MAX_DIST){rx=P.x+rxStep*dist;ry=P.y+ryStep*dist;if(wallAt(rx,ry))break;dist+=.045;}
       depth[i]=dist;
       const corrected=Math.max(.045,dist*Math.cos(offset));
-      const wallH=Math.min(H*1.8,H*.92/corrected),top=(H-wallH)*.5;
+      const wallH=Math.min(H*2.2,H*1.22/corrected),top=H*.5-wallH*.62;
       const base=COLORS[tileAt(rx,ry)]||COLORS.W;
       const beam=Math.max(0,1-Math.abs(offset)/(FOV*.58));
       const fade=Math.max(.16,1-dist/MAX_DIST),light=(.24+fade*.6+beam*fade*.26)*(LIGHT.on?1:.5);
