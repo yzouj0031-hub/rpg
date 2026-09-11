@@ -117,6 +117,10 @@ body.playing #musicToggle{display:flex;}
 /* 数阶模式 */
 #bridgeMode{position:fixed;inset:0;z-index:30;display:none;flex-direction:column;align-items:center;justify-content:center;
   background:radial-gradient(ellipse 70% 60% at 50% 45%, rgba(16,22,30,.94), var(--void) 80%);}
+#bridgeMode.threeD{background:radial-gradient(ellipse 80% 70% at 50% 48%, rgba(3,5,9,.05) 40%, rgba(2,4,7,.55) 100%);}
+#bridgeMode.threeD #stepnum{text-shadow:0 0 34px rgba(0,0,0,.9),0 2px 18px rgba(0,0,0,.95),0 0 60px rgba(143,179,160,.2);}
+#bridgeMode.threeD #steplabel{color:#9aa8a0;text-shadow:0 1px 10px rgba(0,0,0,.9);}
+#bridgeMode.threeD #stephint{color:#8d9b95;text-shadow:0 1px 8px rgba(0,0,0,.9);}
 #bridgeMode.on{display:flex;}
 #stepnum{font-family:'Noto Serif SC',serif;font-weight:900;font-size:96px;color:var(--bone);letter-spacing:.1em;text-shadow:0 0 40px rgba(143,179,160,.25);transition:transform .15s;}
 #stepnum.thirteen{color:var(--blood-hot);text-shadow:0 0 60px rgba(197,58,46,.5);}
@@ -139,7 +143,16 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 @keyframes bodyshake{0%{transform:translate(2px,-2px)}50%{transform:translate(-3px,2px)}100%{transform:translate(2px,1px)}}
 
 /* 标题 / 结局 */
-.screen{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--void);padding:32px;text-align:center;}
+.screen{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--void);padding:32px;text-align:center;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.screen>*{flex-shrink:0;}
+#titleFx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.6;}
+#titleScreen>*:not(#titleFx){position:relative;z-index:1;}
+#titleSeal{width:44px;height:64px;border:1px solid rgba(197,58,46,.75);color:var(--blood-hot);
+  display:flex;align-items:center;justify-content:center;margin-bottom:20px;
+  font-family:'Noto Serif SC',serif;font-weight:700;font-size:19px;letter-spacing:.1em;
+  writing-mode:vertical-rl;box-shadow:0 0 18px rgba(142,31,26,.25),inset 0 0 14px rgba(142,31,26,.18);
+  animation:sealPulse 5s ease-in-out infinite;}
+@keyframes sealPulse{0%,100%{box-shadow:0 0 14px rgba(142,31,26,.2),inset 0 0 10px rgba(142,31,26,.14)}50%{box-shadow:0 0 26px rgba(142,31,26,.45),inset 0 0 18px rgba(142,31,26,.3)}}
 .screen.on{display:flex;}
 .screen h1{font-family:'Noto Serif SC',serif;font-weight:900;font-size:44px;letter-spacing:.3em;color:var(--bone);}
 .screen h1 .red{color:var(--blood-hot);}
@@ -195,6 +208,16 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 .bgmpick span.loaded{color:#8fae94;border-color:#8fae94;}
 .bgmpick input{display:none;}
 .endtag{margin-top:10px;font-size:12px;letter-spacing:.4em;color:var(--blood);}
+@media (max-height:460px){
+  .screen{justify-content:flex-start;padding:18px 24px 28px;}
+  .screen h1{font-size:32px;}
+  #titleSeal{width:34px;height:48px;font-size:15px;margin-bottom:12px;}
+  .screen .story{margin-top:14px;font-size:12.5px;line-height:1.9;}
+  .screen .sub{margin-top:10px;}
+  .screen .btn{margin-top:18px;padding:11px 30px 11px 36px;}
+  #continueBtn{margin-top:9px !important;}
+  .bgmpick{margin-top:12px;}
+}
 @media (prefers-reduced-motion: reduce){*{animation:none !important;}}
 </style>
 </head>
@@ -233,6 +256,8 @@ body.shake #game{animation:bodyshake .07s linear infinite;}
 <div id="scare" aria-hidden="true"><img src="assets/ghost/ghost-bride-scare.webp" alt=""></div>
 
 <div class="screen on" id="titleScreen">
+  <canvas id="titleFx" aria-hidden="true"></canvas>
+  <div id="titleSeal">十三</div>
   <h1>第<span class="red">十三</span>阶</h1>
   <div class="sub">第一人称长篇探索 · 单人 / 双人联机<br>建议戴耳机 · 含突发惊吓画面与音效</div>
   <div class="story">期末周，你在文学院赶报告到半夜。
@@ -876,8 +901,10 @@ function escapeToBridge(){closePanel();GHOST.on=false;GHOST.mode='none';S.mode='
 const CN=['零','一','二','三','四','五','六','七','八','九','十','十一','十二','十三'];
 let step=0,bridgeLock=false;
 function startBridge(){step=0;bridgeLock=false;$('bridgeMode').classList.add('on');$('stephint').textContent='点击屏幕，踏出下一步';
+  if(window.__bridge3d&&document.documentElement.dataset.renderer==='webgl'){$('bridgeMode').classList.add('threeD');__bridge3d.begin();}
   $('bridgeMode').onclick=()=>{if(!bridgeLock)nextStep();};nextStep();}
 function nextStep(){step++;if(step>13)return;sfxStep(.5);if(navigator.vibrate)navigator.vibrate(30);
+  if(window.__bridge3d&&$('bridgeMode').classList.contains('threeD'))__bridge3d.advance(step);
   const n=$('stepnum'),l=$('steplabel');n.textContent=CN[step];l.textContent='第 '+CN[step]+' 阶';
   n.style.transform='scale(1.15)';setTimeout(()=>n.style.transform='scale(1)',140);
   if(step===7){sfxWhisper();$('stephint').textContent='雨里，有人跟着你的脚步在数';addFear(6);}
@@ -1519,6 +1546,284 @@ const dust=new THREE.Points(dustGeo,dustMat);dust.frustumCulled=false;scene.add(
 /* ---- 闪电 ---- */
 const LTN={t:14+Math.random()*20,v:0,second:0};
 const stormLight=new THREE.DirectionalLight(0xc8d8ff,0);stormLight.position.set(6,10,-8);scene.add(stormLight);
+/* ==== 精细化陈设：让每个房间都"住过人" ==== */
+/* 通用多件套实例化：places 里每个 {x,z,ry} 摆一组 parts */
+function instMulti(parts,places){
+  const pm=new THREE.Matrix4(),lm=new THREE.Matrix4(),eu=new THREE.Euler(),q=new THREE.Quaternion(),q2=new THREE.Quaternion(),v=new THREE.Vector3(),one=new THREE.Vector3(1,1,1);
+  parts.forEach(pt=>{
+    const geo=pt.geo||new THREE.BoxGeometry(pt.w,pt.h,pt.d);
+    const im=new THREE.InstancedMesh(geo,pt.mat,places.length);
+    places.forEach((pl,i)=>{
+      eu.set(0,pl.ry||0,0);q.setFromEuler(eu);v.set(pl.x,pl.y||0,pl.z);pm.compose(v,q,one);
+      eu.set(pt.rx||0,pt.ry||0,pt.rz||0);q2.setFromEuler(eu);
+      lm.compose(new THREE.Vector3(pt.px||0,pt.py||0,pt.pz||0),q2,one);
+      pm.multiply(lm);im.setMatrixAt(i,pm);
+    });
+    im.castShadow=im.receiveShadow=true;im.instanceMatrix.needsUpdate=true;scene.add(im);
+  });
+}
+const clothMat=new THREE.MeshPhongMaterial({color:0x3c4a42,shininess:4,side:THREE.DoubleSide});
+const chalkFrame=new THREE.MeshPhongMaterial({color:0x4a3826,shininess:10});
+const brassMat=new THREE.MeshPhongMaterial({color:0x8a744a,shininess:70,specular:0xcaa96a});
+const glassMat=new THREE.MeshPhongMaterial({color:0x9fb6bb,transparent:true,opacity:.16,shininess:120,specular:0xcfe4ea,depthWrite:false});
+const ironDark=new THREE.MeshPhongMaterial({color:0x22262a,shininess:24});
+
+/* ---- 椅子：全楼合唱椅/课椅一次实例化 ---- */
+const CHAIRS=[
+  /* 自习室课桌配椅 */
+  {x:1.7,z:2.12,ry:Math.PI},{x:3.2,z:2.22,ry:Math.PI+.1},{x:1.9,z:3.42,ry:Math.PI-.15},{x:3.3,z:3.52,ry:Math.PI},
+  /* 音乐教室合唱席：两排弧形，面向钢琴(+x) */
+  {x:22.4,z:2.3,ry:Math.PI/2-.28},{x:22.3,z:3.1,ry:Math.PI/2-.12},{x:22.3,z:3.9,ry:Math.PI/2+.05},{x:22.4,z:4.7,ry:Math.PI/2+.22},
+  {x:23.4,z:2.0,ry:Math.PI/2-.3},{x:23.3,z:2.9,ry:Math.PI/2-.1},{x:23.25,z:3.8,ry:Math.PI/2+.06},{x:23.3,z:4.7,ry:Math.PI/2+.2},{x:23.5,z:5.5,ry:Math.PI/2+.4},
+  /* 一把倒在地上的椅子（rx 由部件角度近似——单独放） */
+  /* 值班室 */
+  {x:3.1,z:16.95,ry:Math.PI-.35},
+  /* 档案室阅档台 */
+  {x:25.5,z:13.35,ry:Math.PI+.08},
+];
+instMulti([
+  {w:.3,h:.028,d:.28,mat:wood,py:.245},
+  {w:.3,h:.34,d:.024,mat:wood,py:.42,pz:-.135,rx:-.08},
+  {w:.024,h:.245,d:.024,mat:woodDark,px:-.125,py:.12,pz:-.115},
+  {w:.024,h:.245,d:.024,mat:woodDark,px:.125,py:.12,pz:-.115},
+  {w:.024,h:.245,d:.024,mat:woodDark,px:-.125,py:.12,pz:.115},
+  {w:.024,h:.245,d:.024,mat:woodDark,px:.125,py:.12,pz:.115},
+],CHAIRS);
+/* 倒地的椅子：合唱席里空出的那一把 */
+(function(){const gr=new THREE.Group();
+  const seat=new THREE.Mesh(new THREE.BoxGeometry(.3,.028,.28),wood);gr.add(seat);
+  const back=new THREE.Mesh(new THREE.BoxGeometry(.3,.34,.024),wood);back.position.set(0,.02,-.18);back.rotation.x=-Math.PI/2+.1;gr.add(back);
+  [[-.125,-.115],[.125,-.115],[-.125,.115],[.125,.115]].forEach(p=>{const l=new THREE.Mesh(new THREE.BoxGeometry(.024,.245,.024),woodDark);l.position.set(p[0],.06,p[1]);l.rotation.x=Math.PI/2;gr.add(l);});
+  gr.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true;}});
+  gr.position.set(24.6,.05,3.6);gr.rotation.set(0,.7,Math.PI/2);scene.add(gr);})();
+
+/* ---- 谱架 ---- */
+instMulti([
+  {w:.02,h:.62,d:.02,mat:ironDark,py:.31},
+  {w:.3,h:.02,d:.02,mat:ironDark,py:.02,rx:0},
+  {w:.26,h:.2,d:.012,mat:ironDark,py:.66,rx:-.5},
+],[{x:24.6,z:2.6,ry:Math.PI/2},{x:24.5,z:4.9,ry:Math.PI/2-.3},{x:22.9,z:5.9,ry:Math.PI/2+.5}]);
+
+/* ---- 黑板（自习室：值日表；音乐教室：五线谱+圈出的 6-1-3） ---- */
+function chalkboardTex(draw){const c=document.createElement('canvas');c.width=512;c.height=256;const g=c.getContext('2d');
+  g.fillStyle='#1e2b24';g.fillRect(0,0,512,256);
+  g.fillStyle='rgba(255,255,255,.045)';for(let i=0;i<60;i++)g.fillRect(Math.random()*512,Math.random()*256,Math.random()*40,Math.random()*3);
+  g.fillStyle='rgba(210,214,200,.10)';g.fillRect(30,200,180,26); /* 板擦痕 */
+  draw(g);
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;}
+function addChalkboard(tex,x,y,z,ry,w=1.4,h=.62){
+  const bd=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshPhongMaterial({map:tex,shininess:6}));
+  bd.position.set(x,y,z);bd.rotation.y=ry;scene.add(bd);
+  const fr=new THREE.Mesh(new THREE.BoxGeometry(w+.08,h+.08,.03),chalkFrame);
+  fr.position.set(x,y,z);fr.rotation.y=ry;fr.translateZ(-.018);fr.castShadow=fr.receiveShadow=true;scene.add(fr);
+  const tray=new THREE.Mesh(new THREE.BoxGeometry(w*.7,.025,.06),chalkFrame);
+  tray.position.set(x,y-h/2-.05,z);tray.rotation.y=ry;tray.translateZ(.03);tray.castShadow=true;scene.add(tray);}
+addChalkboard(chalkboardTex(g=>{
+  g.fillStyle='rgba(228,230,218,.85)';g.font='30px "Noto Serif SC",serif';g.textAlign='left';
+  g.fillText('期末复习安排',36,52);
+  g.font='21px "Noto Sans SC",sans-serif';g.fillStyle='rgba(228,230,218,.6)';
+  g.fillText('六月十二日 · 交读书报告',36,96);g.fillText('六月十三日 · ——',36,128);
+  g.strokeStyle='rgba(200,60,50,.75)';g.lineWidth=3;g.beginPath();g.moveTo(150,120);g.lineTo(260,132);g.stroke();
+  g.fillStyle='rgba(200,60,50,.7)';g.font='19px "Noto Serif SC",serif';g.fillText('别 留 到 太 晚',330,206);
+}),1.75,.58,3.982,Math.PI,1.35,.6);
+addChalkboard(chalkboardTex(g=>{
+  g.strokeStyle='rgba(228,230,218,.55)';g.lineWidth=1.5;
+  for(let s=0;s<2;s++)for(let l2=0;l2<5;l2++){const y=60+s*80+l2*11;g.beginPath();g.moveTo(30,y);g.lineTo(480,y);g.stroke();}
+  g.fillStyle='rgba(228,230,218,.8)';
+  [[80,93],[150,82],[220,104],[290,71],[360,93],[430,82],[100,184],[190,162],[300,173],[400,151]].forEach(p=>{g.beginPath();g.ellipse(p[0],p[1],7,5,-.3,0,7);g.fill();});
+  g.strokeStyle='rgba(205,60,48,.9)';g.lineWidth=3;
+  [[150,82],[80,93],[220,104]].forEach((p,i)=>{g.beginPath();g.arc(p[0],p[1],15,0,7);g.stroke();
+    g.fillStyle='rgba(205,60,48,.9)';g.font='17px serif';g.fillText(['六','一','三'][i],p[0]+18,p[1]-12);});
+  g.font='23px "Noto Serif SC",serif';g.fillStyle='rgba(228,230,218,.75)';g.fillText('六月十四日 · 最后一次排练',110,232);
+}),24.7,.58,1.02,0,1.7,.66);
+
+/* ---- 自习室：挂钟(停在23:41)、讲台、窗帘、桌上书本 ---- */
+(function(){const c=document.createElement('canvas');c.width=128;c.height=128;const g=c.getContext('2d');
+  g.fillStyle='#d8d2c2';g.beginPath();g.arc(64,64,60,0,7);g.fill();
+  g.strokeStyle='#3a352c';g.lineWidth=4;g.beginPath();g.arc(64,64,58,0,7);g.stroke();
+  g.fillStyle='#3a352c';g.font='16px serif';g.textAlign='center';g.textBaseline='middle';
+  [['12',64,16],['3',112,64],['6',64,112],['9',16,64]].forEach(p=>g.fillText(p[0],p[1],p[2]));
+  const hourA=-Math.PI/2+((23+41/60)%12)/12*Math.PI*2;
+  g.lineWidth=5;g.beginPath();g.moveTo(64,64);g.lineTo(64+30*Math.cos(hourA),64+30*Math.sin(hourA));g.stroke();
+  g.lineWidth=3;g.beginPath();g.moveTo(64,64);g.lineTo(64+44*Math.cos(-Math.PI/2+41/60*Math.PI*2),64+44*Math.sin(-Math.PI/2+41/60*Math.PI*2));g.stroke();
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;
+  const m=new THREE.Mesh(new THREE.CircleGeometry(.12,24),new THREE.MeshPhongMaterial({map:t,shininess:30}));
+  m.position.set(2.9,.86,3.978);m.rotation.y=Math.PI;scene.add(m);})();
+const bookMat=new THREE.MeshPhongMaterial({color:0xffffff,shininess:4});
+(function(){const geo=new THREE.BoxGeometry(.14,.03,.2);
+  const spots=[[1.62,.415,1.66,.3],[1.78,.44,1.72,-.2],[3.28,.415,1.84,.1],[1.95,.415,3.02,.5],[3.24,.415,3.14,0],[25.5,.455,12.6,.2],[3.2,.44,16.5,.4]];
+  const im=new THREE.InstancedMesh(geo,bookMat,spots.length);const m4=new THREE.Matrix4();const eu=new THREE.Euler();const q=new THREE.Quaternion();const one=new THREE.Vector3(1,1,1);
+  const cols=[0x6e3f35,0x35506e,0x4a5e3a,0x6e6035,0x50406a,0x3a5e5a,0x777264];
+  spots.forEach((p,i)=>{eu.set(0,p[3],0);q.setFromEuler(eu);m4.compose(new THREE.Vector3(p[0],p[1],p[2]),q,one);im.setMatrixAt(i,m4);if(im.setColorAt)im.setColorAt(i,new THREE.Color(cols[i%cols.length]));});
+  im.castShadow=true;scene.add(im);})();
+/* 窗帘：北墙窗边（自习室） */
+const curtainTex=(function(){const c=document.createElement('canvas');c.width=64;c.height=128;const g=c.getContext('2d');
+  for(let x=0;x<64;x++){const v=52+Math.sin(x*.6)*14;g.fillStyle=`rgb(${v*.55|0},${v*.72|0},${v*.62|0})`;g.fillRect(x,0,1,128);}
+  g.fillStyle='rgba(10,16,12,.35)';for(let i=0;i<8;i++)g.fillRect(Math.random()*64,Math.random()*40,2,60+Math.random()*40);
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t;})();
+[[.62,1.03],[3.42,1.03]].forEach(p=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(.42,.88,6,1),new THREE.MeshPhongMaterial({map:curtainTex,side:THREE.DoubleSide,shininess:4}));
+  const pos=m.geometry.attributes.position;for(let i=0;i<pos.count;i++){pos.setZ(i,Math.sin(pos.getX(i)*14)*.03);}pos.needsUpdate=true;m.geometry.computeVertexNormals();
+  m.position.set(p[0],.52,p[1]);m.castShadow=true;scene.add(m);});
+/* 讲台 */
+(function(){const gr=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.6,.86,.4),wood);body.position.y=.43;gr.add(body);
+  const top=new THREE.Mesh(new THREE.BoxGeometry(.68,.04,.48),woodDark);top.position.y=.88;top.rotation.x=-.09;gr.add(top);
+  gr.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true;}});gr.position.set(2.5,0,3.55);gr.rotation.y=Math.PI;scene.add(gr);})();
+
+/* ---- 校史墙展柜：玻璃柜 + 奖杯 + 旧校旗 ---- */
+(function(){const gr=new THREE.Group();
+  const base=new THREE.Mesh(new THREE.BoxGeometry(.9,.5,.34),woodDark);base.position.y=.25;gr.add(base);
+  const shelf=new THREE.Mesh(new THREE.BoxGeometry(.86,.02,.3),wood);shelf.position.y=.52;gr.add(shelf);
+  [[.0,.62,0],[-.4,.62,0],[.4,.62,0]].forEach(p=>{const post=new THREE.Mesh(new THREE.BoxGeometry(.02,.42,.02),brassMat);post.position.set(p[0],.72,p[2]+.14);gr.add(post);
+    const post2=post.clone();post2.position.z=-.14;gr.add(post2);});
+  const glass=new THREE.Mesh(new THREE.BoxGeometry(.86,.42,.3),glassMat);glass.position.y=.73;gr.add(glass);
+  const lid=new THREE.Mesh(new THREE.BoxGeometry(.9,.03,.34),woodDark);lid.position.y=.955;gr.add(lid);
+  [[-.26,0],[0,.03],[.27,-.02]].forEach((p,i)=>{
+    const cup=new THREE.Mesh(new THREE.CylinderGeometry(.035,.05,.1,10),brassMat);cup.position.set(p[0],.59,p[1]);gr.add(cup);
+    if(i===1){const ball=new THREE.Mesh(new THREE.SphereGeometry(.038,10,8),brassMat);ball.position.set(p[0],.68,p[1]);gr.add(ball);}});
+  gr.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true;}});
+  gr.position.set(.5,0,6.5);gr.rotation.y=Math.PI/2;scene.add(gr);})();
+
+/* ---- 楼梯间：真·倚墙旧伞 + 台阶暗示 + B1 门牌 ---- */
+(function(){const gr=new THREE.Group();
+  const canopy=new THREE.Mesh(new THREE.ConeGeometry(.055,.5,8),new THREE.MeshPhongMaterial({color:0x14161a,shininess:32,specular:0x3a4450}));
+  canopy.position.y=.32;gr.add(canopy);
+  const tip=new THREE.Mesh(new THREE.CylinderGeometry(.008,.008,.09,6),ironDark);tip.position.y=.6;gr.add(tip);
+  const cane=new THREE.Mesh(new THREE.CylinderGeometry(.011,.011,.34,6),woodDark);cane.position.y=.08;gr.add(cane);
+  const hook=new THREE.Mesh(new THREE.TorusGeometry(.045,.011,6,10,Math.PI),woodDark);hook.position.y=-.085;hook.rotation.z=Math.PI;gr.add(hook);
+  gr.traverse(o=>{if(o.isMesh){o.castShadow=true;}});
+  gr.position.set(6.72,.12,11.32);gr.rotation.z=.34;gr.rotation.x=.06;scene.add(gr);
+  /* 伞下积水 */
+  const pool=new THREE.Mesh(new THREE.CircleGeometry(.22,14),new THREE.MeshPhongMaterial({color:0x1a2a28,shininess:130,specular:0x9fc8bb,transparent:true,opacity:.5,depthWrite:false}));
+  pool.rotation.x=-Math.PI/2;pool.position.set(6.7,.006,11.5);scene.add(pool);})();
+
+/* ---- 值班室：CRT 监视器(雪花屏) + 台灯 + 热水壶 + 钥匙柜 ---- */
+const CRT={cv:document.createElement('canvas'),t:0};CRT.cv.width=96;CRT.cv.height=72;
+CRT.tx=new THREE.CanvasTexture(CRT.cv);
+(function(){const gr=new THREE.Group();
+  const shell=new THREE.Mesh(new THREE.BoxGeometry(.34,.3,.32),new THREE.MeshPhongMaterial({color:0xb8b2a2,shininess:14}));
+  shell.position.y=.15;gr.add(shell);
+  const scr=new THREE.Mesh(new THREE.PlaneGeometry(.26,.2),new THREE.MeshPhongMaterial({map:CRT.tx,emissive:0x8899aa,emissiveMap:CRT.tx,emissiveIntensity:.8,shininess:80}));
+  scr.position.set(0,.16,.161);gr.add(scr);
+  gr.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true;}});
+  gr.position.set(3.55,.4,16.62);gr.rotation.y=Math.PI+.25;scene.add(gr);
+  CRT.light=new THREE.PointLight(0x9fb6c8,.5,2.2,1.8);CRT.light.position.set(3.5,.72,16.35);scene.add(CRT.light);})();
+(function(){const gr=new THREE.Group(); /* 台灯 */
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(.06,.075,.02,12),ironDark);gr.add(base);
+  const arm=new THREE.Mesh(new THREE.CylinderGeometry(.008,.008,.3,6),ironDark);arm.position.set(.04,.15,0);arm.rotation.z=-.3;gr.add(arm);
+  const shade=new THREE.Mesh(new THREE.ConeGeometry(.07,.09,10,1,true),new THREE.MeshPhongMaterial({color:0x2c4a3c,shininess:40,side:THREE.DoubleSide,emissive:0x664d1c,emissiveIntensity:.55}));
+  shade.position.set(.12,.3,0);shade.rotation.z=.5;gr.add(shade);
+  gr.traverse(o=>{if(o.isMesh)o.castShadow=true;});gr.position.set(2.85,.42,16.62);scene.add(gr);})();
+(function(){const kettle=new THREE.Mesh(new THREE.CylinderGeometry(.07,.085,.16,12),new THREE.MeshPhongMaterial({color:0x8f4a3e,shininess:60,specular:0xc8a090}));
+  kettle.position.set(1.2,.08,15.6);kettle.castShadow=true;scene.add(kettle);
+  const keybox=new THREE.Mesh(new THREE.BoxGeometry(.36,.46,.06),ironDark);keybox.position.set(1.02,.62,14.3);keybox.castShadow=true;scene.add(keybox);
+  for(let r=0;r<3;r++)for(let c2=0;c2<4;c2++){const k=new THREE.Mesh(new THREE.BoxGeometry(.016,.05,.012),brassMat);
+    k.position.set(.9+c2*.08,.74-r*.13,14.34);k.rotation.x=.15+Math.random()*.2;scene.add(k);}})();
+
+/* ---- 档案室：滚动扶梯 + 落地纸箱堆 ---- */
+(function(){const gr=new THREE.Group();
+  const railMat=ironDark;
+  [[-.14],[.14]].forEach(p=>{const rail=new THREE.Mesh(new THREE.BoxGeometry(.03,1.0,.03),railMat);rail.position.set(p[0],.5,0);rail.rotation.x=.35;gr.add(rail);});
+  for(let i=0;i<4;i++){const step=new THREE.Mesh(new THREE.BoxGeometry(.3,.024,.09),wood);
+    step.position.set(0,.16+i*.24,.34-(0.16+i*.24)*.365);gr.add(step);}
+  gr.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true;}});
+  gr.position.set(23.35,0,12.2);gr.rotation.y=Math.PI/2;scene.add(gr);})();
+const boxMat=new THREE.MeshPhongMaterial({color:0xffffff,shininess:3});
+(function(){const geo=new THREE.BoxGeometry(.3,.2,.22);
+  const spots=[[20.6,.1,16.4,.2],[20.62,.3,16.42,.05],[20.95,.1,16.3,-.3],[30.6,.1,9.8,.4],[30.55,.3,9.86,.15],[21.2,.1,10.2,.1],[30.4,.1,16.6,-.2]];
+  const im=new THREE.InstancedMesh(geo,boxMat,spots.length);const m4=new THREE.Matrix4();const eu=new THREE.Euler();const q=new THREE.Quaternion();const one=new THREE.Vector3(1,1,1);
+  spots.forEach((p,i)=>{eu.set(0,p[3],0);q.setFromEuler(eu);m4.compose(new THREE.Vector3(p[0],p[1],p[2]),q,one);im.setMatrixAt(i,m4);
+    if(im.setColorAt)im.setColorAt(i,new THREE.Color().setHSL(.09,.25+Math.random()*.1,.32+Math.random()*.12));});
+  im.castShadow=im.receiveShadow=true;scene.add(im);})();
+
+/* ---- 配电间：墙面配电箱 + 警示条纹 ---- */
+(function(){const box=new THREE.Mesh(new THREE.BoxGeometry(.5,.7,.1),new THREE.MeshPhongMaterial({color:0x54595e,shininess:44,specular:0x83929c}));
+  box.position.set(16.2,.58,20.93);box.castShadow=true;scene.add(box);
+  const door=new THREE.Mesh(new THREE.BoxGeometry(.22,.62,.02),new THREE.MeshPhongMaterial({color:0x494e53,shininess:50}));
+  door.position.set(16.05,.58,20.86);door.rotation.y=-.9;door.castShadow=true;scene.add(door);
+  for(let i=0;i<6;i++){const lever=new THREE.Mesh(new THREE.BoxGeometry(.026,.07,.02),i<3?brassMat:ironDark);
+    lever.position.set(16.08+i*.055,.62,20.87);lever.rotation.x=i<3?-.4:.4;scene.add(lever);}
+  const stripeCv=document.createElement('canvas');stripeCv.width=64;stripeCv.height=16;
+  const g=stripeCv.getContext('2d');for(let i=0;i<8;i++){g.fillStyle=i%2?'#8a7420':'#26221a';g.beginPath();
+    g.moveTo(i*8,16);g.lineTo(i*8+8,0);g.lineTo(i*8+16,0);g.lineTo(i*8+8,16);g.fill();}
+  const st=new THREE.CanvasTexture(stripeCv);st.wrapS=THREE.RepeatWrapping;st.repeat.x=3;
+  const stripe=new THREE.Mesh(new THREE.PlaneGeometry(1.3,.09),new THREE.MeshPhongMaterial({map:st,shininess:4}));
+  stripe.position.set(16.2,.1,20.985);stripe.rotation.y=Math.PI;scene.add(stripe);})();
+
+/* ---- 地下：供桌蜡烛 + 枯花 + 垂坠电缆 + 排水篦子 ---- */
+const FLAMES=[];
+(function(){
+  [[3.78,20.1],[4.22,20.12],[4.0,20.3]].forEach(p=>{
+    const c2=new THREE.Mesh(new THREE.CylinderGeometry(.016,.02,.09,8),new THREE.MeshPhongMaterial({color:0xd8cdb2,shininess:26}));
+    c2.position.set(p[0],.395,p[1]);c2.castShadow=true;scene.add(c2);
+    const fl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTx,color:0xffb45a,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
+    fl.position.set(p[0],.47,p[1]);fl.scale.set(.07,.11,1);scene.add(fl);FLAMES.push(fl);});
+  const cl=new THREE.PointLight(0xff9a4a,.85,3.4,1.9);cl.position.set(4,.6,20.2);scene.add(cl);FLAMES.light=cl;
+  /* 枯花束 */
+  [[3.5,20.35,.4],[4.5,20.3,-.5]].forEach(p=>{const gr=new THREE.Group();
+    for(let i=0;i<5;i++){const stem=new THREE.Mesh(new THREE.CylinderGeometry(.004,.006,.22,4),new THREE.MeshPhongMaterial({color:0x4a4030,shininess:4}));
+      stem.position.y=.1;stem.rotation.z=(Math.random()-.5)*.8;stem.rotation.x=(Math.random()-.5)*.5;gr.add(stem);
+      const head=new THREE.Mesh(new THREE.SphereGeometry(.018,6,5),new THREE.MeshPhongMaterial({color:0x6a5138,shininess:4}));
+      head.position.set(stem.rotation.z*-.2,.21,stem.rotation.x*-.2);gr.add(head);}
+    gr.position.set(p[0],0,p[1]);gr.rotation.y=p[2];gr.rotation.z=.9;gr.position.y=.03;scene.add(gr);});
+})();
+/* 垂坠电缆（悬链线） */
+(function(){const cableMat=new THREE.MeshPhongMaterial({color:0x1c1e20,shininess:30});
+  [[[1.5,.98,18.25],[4.5,.7,18.3],[7.5,.98,18.2]],
+   [[7.5,.98,18.2],[10.5,.74,18.35],[13.5,.98,18.25]],
+   [[6.5,.98,19.6],[10,.66,19.75],[13.5,.98,19.6]],
+   [[20.5,.98,16.4],[23,.78,16.5],[25.5,.98,16.4]]].forEach(pts=>{
+    const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],p[1],p[2])));
+    const tube=new THREE.Mesh(new THREE.TubeGeometry(curve,20,.013,5),cableMat);tube.castShadow=true;scene.add(tube);});})();
+/* 排水篦子 */
+(function(){const grCv=document.createElement('canvas');grCv.width=64;grCv.height=64;const g=grCv.getContext('2d');
+  g.fillStyle='#15181a';g.fillRect(0,0,64,64);g.fillStyle='#2e3438';
+  for(let i=0;i<6;i++)g.fillRect(4,6+i*10,56,5);
+  const t=new THREE.CanvasTexture(grCv);
+  [[5,19.2],[12,20.6],[17.5,19.3]].forEach(p=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(.5,.34),new THREE.MeshPhongMaterial({map:t,shininess:36,specular:0x5c6a70}));
+    m.rotation.x=-Math.PI/2;m.rotation.z=Math.random();m.position.set(p[0],.007,p[1]);scene.add(m);});})();
+
+/* ---- 出口指示灯（绿色，微光） ---- */
+(function(){const exCv=document.createElement('canvas');exCv.width=128;exCv.height=48;const g=exCv.getContext('2d');
+  g.fillStyle='#0c2416';g.fillRect(0,0,128,48);g.fillStyle='#57e08a';
+  g.font='bold 22px "Noto Sans SC",sans-serif';g.textAlign='center';g.fillText('安全出口 →',64,32);
+  const t=new THREE.CanvasTexture(exCv);t.encoding=THREE.sRGBEncoding;
+  const mk=(x,y,z,ry)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(.4,.15),new THREE.MeshPhongMaterial({map:t,emissive:0x2c7a4a,emissiveMap:t,emissiveIntensity:1.1,shininess:10}));
+    m.position.set(x,y,z);m.rotation.y=ry;scene.add(m);};
+  mk(8,.9,12.97,Math.PI);mk(9.5,.9,10.03,0);
+  const gl=new THREE.PointLight(0x3fae6a,.4,2.6,2);gl.position.set(8,.85,12.6);scene.add(gl);})();
+
+/* ---- 储物柜区长凳 + 走廊消防栓箱 ---- */
+instMulti([
+  {w:.9,h:.035,d:.22,mat:wood,py:.3},
+  {w:.9,h:.03,d:.05,mat:wood,py:.16,pz:.06},
+  {w:.05,h:.3,d:.2,mat:woodDark,px:-.38,py:.15},
+  {w:.05,h:.3,d:.2,mat:woodDark,px:.38,py:.15},
+],[{x:17.6,z:7.6,ry:Math.PI/2},{x:14.2,z:5.2,ry:0}]);
+
+/* ---- 月光光柱（窗 → 走廊/自习室），随闪电增强 ---- */
+const SHAFTS=[];
+(function(){const c=document.createElement('canvas');c.width=64;c.height=128;const g=c.getContext('2d');
+  const gr=g.createLinearGradient(0,0,0,128);gr.addColorStop(0,'rgba(170,195,225,.5)');gr.addColorStop(.7,'rgba(140,170,205,.12)');gr.addColorStop(1,'rgba(120,150,190,0)');
+  g.fillStyle=gr;g.fillRect(0,0,64,128);
+  const t=new THREE.CanvasTexture(c);
+  const mat=new THREE.MeshBasicMaterial({map:t,transparent:true,opacity:.05,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false});
+  const xs=[1,2,3,5,6,7,8,9,10,11,12,13,14];
+  xs.forEach(x=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(.86,1.7),mat);
+    m.position.set(x+.5,.5,1.62);m.rotation.x=.9;scene.add(m);SHAFTS.push(m);});
+  for(let y=1;y<=3;y++){const m=new THREE.Mesh(new THREE.PlaneGeometry(.86,1.7),mat);
+    m.position.set(1.62,.5,y+.5);m.rotation.set(.0,Math.PI/2,0);m.rotation.x=0;m.rotateX(.9);scene.add(m);SHAFTS.push(m);}
+  SHAFTS.mat=mat;})();
+/* 窗外雨幕（贴窗内侧，滚动） */
+const RAINWIN=(function(){const c=document.createElement('canvas');c.width=128;c.height=128;const g=c.getContext('2d');
+  g.strokeStyle='rgba(190,210,230,.5)';g.lineWidth=1;
+  for(let i=0;i<26;i++){const x=Math.random()*128,y=Math.random()*128,l2=8+Math.random()*18;
+    g.beginPath();g.moveTo(x,y);g.lineTo(x-2,y+l2);g.stroke();}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(9,1);
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(10,.84),new THREE.MeshBasicMaterial({map:t,transparent:true,opacity:.07,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
+  m.position.set(10,.52,1.005);scene.add(m);
+  const m2=new THREE.Mesh(m.geometry,m.material);m2.position.set(2.5,.52,1.005);m2.scale.x=.3;scene.add(m2);
+  return {t,m};})();
 /* ---- 幽灵：立绘 + 布料形变着色器 + 红纱拖尾 + 红雾 + 红光 + 湿脚印 ---- */
 const ghostTx=new THREE.TextureLoader().load('assets/ghost/ghost-bride-sprite.webp');
 ghostTx.encoding=THREE.sRGBEncoding;ghostTx.minFilter=THREE.LinearMipmapLinearFilter;ghostTx.magFilter=THREE.LinearFilter;
@@ -1657,6 +1962,20 @@ function render3D(t){
     L2.li.intensity=Math.max(0,v);L2.bar.material.emissiveIntensity=Math.max(.05,v*2.2);});
   swingLamp.gr.rotation.z=Math.sin(t*.0016)*.32;swingLamp.gr.rotation.x=Math.cos(t*.0011)*.12;
   swingLamp.li.intensity=(.55+.2*Math.sin(t*.01))*flick;swingLamp.bulb.material.emissiveIntensity=1.1*flick;
+  /* CRT 雪花屏 */
+  CRT.t-=dt;
+  if(CRT.t<=0){CRT.t=.12;const g=CRT.cv.getContext('2d');const d=g.createImageData(96,72);
+    for(let i=0;i<d.data.length;i+=4){const v=Math.random()*110|0;d.data[i]=v*.8;d.data[i+1]=v;d.data[i+2]=v*1.1;d.data[i+3]=255;}
+    g.putImageData(d,0,0);if(Math.random()<.12){g.fillStyle='rgba(180,200,210,.5)';g.fillRect(0,Math.random()*72,96,2);}
+    CRT.tx.needsUpdate=true;}
+  if(CRT.light)CRT.light.intensity=.4+Math.random()*.18;
+  /* 烛光摇曳 */
+  FLAMES.forEach((f,i)=>{const w=.06+.02*Math.sin(t*.02+i*2.1)+.008*Math.sin(t*.047+i);f.scale.set(w,w*1.6,1);
+    f.position.y=.468+.006*Math.sin(t*.013+i*3);});
+  if(FLAMES.light)FLAMES.light.intensity=.75+.18*Math.sin(t*.021)+Math.random()*.08;
+  /* 月光光柱与窗外雨幕 */
+  if(SHAFTS.mat)SHAFTS.mat.opacity=.045+LTN.v*.5;
+  RAINWIN.t.offset.y-=dt*1.6;RAINWIN.m.material.opacity=.06+LTN.v*.3;
   /* 水面 */
   waterMat.map.offset.x+=dt*.015;waterMat.map.offset.y-=dt*.008;waterMat.opacity=.34+.04*Math.sin(t*.0013);
   /* 尘埃 */
@@ -1704,6 +2023,152 @@ function render3D(t){
   POST.mat.uniforms.uDark.value+=((LIGHT.on?0:1)-POST.mat.uniforms.uDark.value)*Math.min(1,dt*4);
   renderer.render(POST.scene,POST.cam);
 }
+/* ==== 终章：3D 雨夜石桥 ==== */
+function initBridge3D(){
+  const bs=new THREE.Scene();
+  bs.background=new THREE.Color(0x04060a);
+  bs.fog=new THREE.FogExp2(0x05070c,0.14);
+  const bc=new THREE.PerspectiveCamera(66,innerWidth/innerHeight,.05,60);
+  bc.rotation.order='YXZ';bs.add(bc);
+  /* 石材质 */
+  const stoneTx=ctex((g,w,hh)=>{
+    g.fillStyle='#4c5052';g.fillRect(0,0,w,hh);
+    for(let i=0;i<26;i++){g.fillStyle=`rgba(${30+R(0,26)|0},${34+R(0,26)|0},${34+R(0,22)|0},.55)`;
+      g.beginPath();g.ellipse(R(0,w),R(0,hh),R(3,16),R(2,9),R(0,3),0,7);g.fill();}
+    g.fillStyle='rgba(48,72,52,.4)';for(let i=0;i<12;i++){g.beginPath();g.ellipse(R(0,w),R(0,hh),R(2,9),R(2,6),0,0,7);g.fill();}
+    g.strokeStyle='rgba(16,18,18,.6)';g.lineWidth=2;
+    g.strokeRect(2,2,w-4,hh-4);
+    speck(g,w,hh,500,'#1a1d1d',.4);speck(g,w,hh,200,'#7d8582',.2);});
+  const stoneMat=new THREE.MeshPhongMaterial({map:stoneTx,bumpMap:stoneTx,bumpScale:.02,shininess:60,specular:0x6a7d80});
+  const stoneDark=new THREE.MeshPhongMaterial({map:stoneTx,color:0x8a9294,bumpMap:stoneTx,bumpScale:.02,shininess:50,specular:0x50605f});
+  /* 桥体：十三级上行台阶 + 两侧栏板 + 望柱 */
+  const STEP_D=.62,STEP_H=.145;
+  const stepY=i=>i*STEP_H, stepZ=i=>-i*STEP_D;
+  for(let i=0;i<13;i++){
+    const slab=new THREE.Mesh(new THREE.BoxGeometry(1.7,.15,STEP_D+.06),i===12?stoneDark:stoneMat);
+    slab.position.set(0,stepY(i)-.075,stepZ(i));slab.castShadow=slab.receiveShadow=true;bs.add(slab);
+    /* 侧面基座延伸到水面 */
+    const skirt=new THREE.Mesh(new THREE.BoxGeometry(1.66,stepY(i)+.7,STEP_D+.02),stoneMat);
+    skirt.position.set(0,(stepY(i)-.15-.7)/2- .35+stepY(i)/2 -(stepY(i)+.7)/2 + stepY(i)-.15+.001-((stepY(i)+.7)/2-((stepY(i)+.7)/2)),stepZ(i));
+    skirt.position.y=stepY(i)-.15-(stepY(i)+.7)/2;
+    bs.add(skirt);
+  }
+  for(let i=0;i<=13;i+=1){ /* 望柱 */
+    if(i%2)continue;
+    [-0.92,0.92].forEach(px=>{
+      const post=new THREE.Mesh(new THREE.BoxGeometry(.11,.52,.11),stoneMat);
+      post.position.set(px,stepY(Math.min(i,12))+.26,stepZ(i)+STEP_D*.5-.3);post.castShadow=true;bs.add(post);
+      const cap=new THREE.Mesh(new THREE.SphereGeometry(.07,8,7),stoneDark);
+      cap.position.set(px,stepY(Math.min(i,12))+.56,stepZ(i)+STEP_D*.5-.3);cap.castShadow=true;bs.add(cap);});
+  }
+  /* 斜栏板 */
+  [-0.92,0.92].forEach(px=>{
+    const rail=new THREE.Mesh(new THREE.BoxGeometry(.08,.16,8.6),stoneMat);
+    rail.position.set(px,stepY(6)+.46,stepZ(6));
+    rail.rotation.x=Math.atan2(STEP_H,STEP_D);rail.castShadow=true;bs.add(rail);
+    const board=new THREE.Mesh(new THREE.BoxGeometry(.05,.3,8.4),stoneDark);
+    board.position.set(px,stepY(6)+.26,stepZ(6));board.rotation.x=Math.atan2(STEP_H,STEP_D);bs.add(board);});
+  /* 桥下黑水 */
+  const bwTx=ctex((g,w,hh)=>{g.fillStyle='#0a1416';g.fillRect(0,0,w,hh);
+    g.strokeStyle='rgba(130,170,175,.22)';g.lineWidth=1.2;
+    for(let i=0;i<14;i++){g.beginPath();g.ellipse(R(0,w),R(0,hh),R(6,26),R(2,7),R(-.3,.3),0,7);g.stroke();}});
+  bwTx.repeat.set(8,8);
+  const bwater=new THREE.Mesh(new THREE.PlaneGeometry(46,46),
+    new THREE.MeshPhongMaterial({map:bwTx,color:0x223236,shininess:140,specular:0x9fc3c8,transparent:true,opacity:.9}));
+  bwater.rotation.x=-Math.PI/2;bwater.position.set(0,-.85,-4);bs.add(bwater);
+  /* 两岸暗坡 */
+  const bank=new THREE.Mesh(new THREE.PlaneGeometry(46,10),new THREE.MeshPhongMaterial({color:0x0c1210,shininess:4}));
+  bank.rotation.x=-Math.PI/2;bank.position.set(0,-.3,4.2);bs.add(bank);
+  const bank2=new THREE.Mesh(bank.geometry,bank.material);bank2.rotation.x=-Math.PI/2;bank2.position.set(0,stepY(12)-.2,-12.5);bs.add(bank2);
+  /* 岸边芦苇剪影 */
+  const reedMat=new THREE.MeshPhongMaterial({color:0x0d1512,shininess:2,side:THREE.DoubleSide});
+  for(let i=0;i<26;i++){const reed=new THREE.Mesh(new THREE.PlaneGeometry(.02+Math.random()*.02,.5+Math.random()*.55),reedMat);
+    const side=Math.random()<.5?-1:1;
+    reed.position.set(side*(1.6+Math.random()*3.4),-.3+Math.random()*.2,2.2+Math.random()*2.4);
+    reed.rotation.z=(Math.random()-.5)*.35;bs.add(reed);}
+  /* 远处山影 */
+  const hill=new THREE.Mesh(new THREE.PlaneGeometry(40,6),new THREE.MeshBasicMaterial({color:0x070b0e,fog:false}));
+  hill.position.set(0,2.2,-26);bs.add(hill);
+  /* 雨（线段，围绕镜头循环） */
+  const RN=340,rGeo=new THREE.BufferGeometry(),rPos=new Float32Array(RN*6),rSpd=[];
+  for(let i=0;i<RN;i++){const x=(Math.random()-.5)*14,y=Math.random()*5,z=(Math.random()-.5)*14;
+    rPos[i*6]=x;rPos[i*6+1]=y;rPos[i*6+2]=z;rPos[i*6+3]=x-.04;rPos[i*6+4]=y-.3;rPos[i*6+5]=z;
+    rSpd.push(6+Math.random()*4);}
+  rGeo.setAttribute('position',new THREE.BufferAttribute(rPos,3));
+  const rain3=new THREE.LineSegments(rGeo,new THREE.LineBasicMaterial({color:0x9fb6c8,transparent:true,opacity:.3,blending:THREE.AdditiveBlending,fog:false}));
+  rain3.frustumCulled=false;bs.add(rain3);
+  /* 溅落涟漪：桥面上随机闪的小亮点 */
+  const SPL=26,sGeo=new THREE.BufferGeometry(),sPos=new Float32Array(SPL*3),sAge=[];
+  for(let i=0;i<SPL;i++){sPos[i*3]=(Math.random()-.5)*1.6;sPos[i*3+1]=0;sPos[i*3+2]=-Math.random()*8;sAge.push(Math.random());}
+  sGeo.setAttribute('position',new THREE.BufferAttribute(sPos,3));
+  const splash=new THREE.Points(sGeo,new THREE.PointsMaterial({color:0xbfd6dd,size:.05,transparent:true,opacity:.5,map:glowTx,blending:THREE.AdditiveBlending,depthWrite:false}));
+  splash.frustumCulled=false;bs.add(splash);
+  /* 灯光 */
+  bs.add(new THREE.AmbientLight(0x22303a,.7));
+  const moon=new THREE.DirectionalLight(0x8fa8c8,.5);moon.position.set(-6,10,-4);moon.castShadow=true;
+  moon.shadow.mapSize.set(1024,1024);moon.shadow.camera.near=1;moon.shadow.camera.far=30;
+  moon.shadow.camera.left=-6;moon.shadow.camera.right=6;moon.shadow.camera.top=12;moon.shadow.camera.bottom=-4;
+  bs.add(moon);
+  const torch=new THREE.PointLight(0xd8e6c2,1.1,7,1.6);bc.add(torch);torch.position.set(.1,-.1,-.2);
+  const bstorm=new THREE.DirectionalLight(0xc8d8ff,0);bstorm.position.set(5,8,-6);bs.add(bstorm);
+  /* 桥上的她：远处剪影（第十阶后出现） */
+  const bgGhost=new THREE.Mesh(new THREE.PlaneGeometry(.6,1.0),
+    new THREE.MeshBasicMaterial({map:ghostTx,transparent:true,opacity:0,depthWrite:false,color:0x8a6a6a,fog:true}));
+  bgGhost.position.set(0,stepY(12)+.62,stepZ(12)-1.6);bs.add(bgGhost);
+  /* 状态 */
+  const ST={active:false,step:0,from:null,to:null,t:1,bob:0,ltn:0,ltnT:6};
+  function camAt(i){return new THREE.Vector3(0,stepY(Math.max(0,i-1))+.62,stepZ(i)+STEP_D*1.1);}
+  return {
+    begin(){ST.active=true;ST.step=0;ST.t=1;ST.ltn=0;ST.ltnT=2.5;
+      bc.position.copy(camAt(-1));bc.position.z=1.8;bc.rotation.set(-.06,0,0);bgGhost.material.opacity=0;},
+    advance(i){ST.from=bc.position.clone();ST.to=camAt(i);ST.step=i;ST.t=0;
+      if(i>=10)bgGhost.material.opacity=Math.min(.5,(i-9)*.16);
+      if(i===13){bgGhost.material.opacity=0;}},
+    frame(t){
+      const dt=Math.min(.05,(t-(ST.pt||t))/1000||.016);ST.pt=t;
+      if(ST.t<1&&ST.from){ST.t=Math.min(1,ST.t+dt*1.7);const e=ST.t*ST.t*(3-2*ST.t);
+        bc.position.lerpVectors(ST.from,ST.to,e);ST.bob+=dt*9;
+        bc.position.y+=Math.sin(ST.bob)*.02*(1-Math.abs(ST.t-.5)*2);}
+      bc.rotation.x=-.05+Math.sin(t*.0008)*.012;
+      bc.rotation.z=Math.sin(t*.0011)*.01;
+      bc.rotation.y=Math.sin(t*.0006)*.02;
+      /* 雨 */
+      const p=rGeo.attributes.position.array;
+      for(let i=0;i<RN;i++){let y=p[i*6+1]-rSpd[i]*dt;
+        if(y<bc.position.y-2.2){y=bc.position.y+3+Math.random();
+          const x=bc.position.x+(Math.random()-.5)*12,z=bc.position.z+(Math.random()-.5)*12-2;
+          p[i*6]=x;p[i*6+2]=z;p[i*6+3]=x-.04;p[i*6+5]=z;}
+        p[i*6+1]=y;p[i*6+4]=y-.3;}
+      rGeo.attributes.position.needsUpdate=true;
+      /* 桥面溅点 */
+      const sp=sGeo.attributes.position.array;
+      for(let i=0;i<SPL;i++){sAge[i]+=dt*2.2;if(sAge[i]>1){sAge[i]=0;
+        sp[i*3]=(Math.random()-.5)*1.6;sp[i*3+2]=bc.position.z-1-Math.random()*5;
+        sp[i*3+1]=stepY(Math.max(0,Math.round(-sp[i*3+2]/STEP_D)))+.012;}}
+      sGeo.attributes.position.needsUpdate=true;
+      splash.material.opacity=.25+Math.random()*.3;
+      /* 闪电 */
+      ST.ltnT-=dt;
+      if(ST.ltnT<=0){ST.ltnT=7+Math.random()*12;ST.ltn=1;setTimeout(sfxThunder,300+Math.random()*900);}
+      ST.ltn*=Math.pow(.02,dt);if(ST.ltn<.004)ST.ltn=0;
+      bstorm.intensity=ST.ltn*2.2;bs.fog.density=.14-ST.ltn*.05;
+      bwTx.offset.x+=dt*.01;bwTx.offset.y+=dt*.006;
+      bgGhost.position.x=Math.sin(t*.0006)*.08;
+      bgGhost.lookAt(bc.position.x,bgGhost.position.y,bc.position.z);
+      bc.aspect=innerWidth/innerHeight;bc.updateProjectionMatrix();
+      renderer.setRenderTarget(POST.rt);
+      renderer.render(bs,bc);
+      renderer.setRenderTarget(null);
+      POST.mat.uniforms.uT.value=t*.001;
+      POST.mat.uniforms.uF.value=Math.min(1,.3+ST.step/13*.5);
+      POST.mat.uniforms.uL.value=ST.ltn;
+      POST.mat.uniforms.uDark.value=0;
+      renderer.render(POST.scene,POST.cam);
+    }
+  };
+}
+window.__bridge3d=initBridge3D();
+
 window.__three={LTN,GH,flashRig,scene,camera,renderer};
 addEventListener('resize',resize);
 return render3D;
@@ -1840,11 +2305,35 @@ try{
 let lastT=0;
 function loop(t){const dt=Math.min(0.05,(t-lastT)/1000||0.016);lastT=t;
   if(S.mode==='play'){update(dt);renderFrame(t);}
+  else if(S.mode==='bridge'&&window.__bridge3d&&document.getElementById('bridgeMode').classList.contains('on'))__bridge3d.frame(t);
   if(window.MULTI)MULTI.update(dt);
   requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
 
 /* ============ 开场 ============ */
+/* ---- 标题雨幕 ---- */
+(function(){
+  const c=document.getElementById('titleFx');if(!c)return;
+  const g=c.getContext('2d');if(!g)return;
+  let drops=[];
+  function resize(){c.width=c.clientWidth;c.height=c.clientHeight;
+    drops=Array.from({length:Math.min(110,c.width/9|0)},()=>({x:Math.random()*c.width,y:Math.random()*c.height,l:9+Math.random()*20,s:220+Math.random()*260,o:.1+Math.random()*.3}));}
+  addEventListener('resize',resize);resize();
+  let last=0;
+  (function tickRain(t){
+    requestAnimationFrame(tickRain);
+    if(!$('titleScreen').classList.contains('on')&&!$('endTitle').classList.contains('on'))return;
+    const dt=Math.min(.05,(t-last)/1000||.016);last=t;
+    g.clearRect(0,0,c.width,c.height);
+    g.strokeStyle='rgba(150,175,190,1)';g.lineWidth=1;
+    drops.forEach(d=>{d.y+=d.s*dt;d.x-=d.s*dt*.09;
+      if(d.y>c.height){d.y=-d.l;d.x=Math.random()*c.width;}
+      g.globalAlpha=d.o;g.beginPath();g.moveTo(d.x,d.y);g.lineTo(d.x-d.l*.09,d.y+d.l);g.stroke();});
+    g.globalAlpha=1;
+  })(0);
+  const end=$('endTitle');
+  if(end&&!end.querySelector('#titleFx2')){/* 结局页共用一层静态噪点即可，不加第二个画布 */}
+})();
 /* ---- 本地BGM（用户自选文件，仅本机播放，不上传） ---- */
 $('bgmPickBtn').onclick=()=>$('bgmFile').click();
 $('bgmFile').onchange=e=>{
