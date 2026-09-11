@@ -72,7 +72,7 @@ await writeFile(path.join(webDir, 'index.html'), html);
 
 let serviceWorker = await readFile(path.join(webDir, 'sw.js'), 'utf8');
 serviceWorker = serviceWorker
-  .replaceAll('di13jie-v11', 'di13jie-apk-v6')
+  .replaceAll('di13jie-v12', 'di13jie-apk-v7')
   .replaceAll(threeCdnUrl, 'vendor/three.min.js')
   .replaceAll(peerCdnUrl, 'vendor/peerjs.min.js');
 for (const { url, localPath } of tracks) {
