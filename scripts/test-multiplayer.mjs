@@ -123,8 +123,16 @@ function makeClient(label) {
     },
     MW: 32, MH: 22,
     P: { x: 2.5, y: 2.5, a: 0 },
-    GHOST: { x: 0, y: 0, on: false, mode: 'none', t: 0 },
+    GHOST: { x: 0, y: 0, on: false, mode: 'none', t: 0, cool: 0 },
     HIDE: { on: false },
+    LIGHT: { on: true },
+    STAM: { running: false },
+    DOWN: { on: false },
+    attractCalls: [],
+    enterDown() { this.DOWN.on = true; },
+    exitDown() { this.DOWN.on = false; },
+    attractGhost(x, y) { this.attractCalls.push([x, y]); },
+    playCallout() {},
     refreshCount: 0,
     beginGame() { this.S.mode = 'play'; },
     refreshSharedUi() { this.refreshCount += 1; },
@@ -176,6 +184,35 @@ assert.equal(host.game.S.has.note, true);
 assert.equal(host.game.S.minute, 42);
 assert.equal(host.game.S.pages[2], true);
 assert.equal(guest.game.S.pages[2], true);
+
+/* —— 双人协作：抓倒 → 搀扶 → 喊话 —— */
+host.multi.catchRemote();
+await flush();
+assert.equal(guest.game.DOWN.on, true, '队友被抓后应进入倒地状态');
+guest.multi.update(0.2);
+await flush();
+assert.ok(host.multi.remoteDown(), '房主应看到队友倒地');
+host.multi.sendRevive();
+await flush();
+assert.equal(guest.game.DOWN.on, false, '收到搀扶后应站起来');
+assert.equal(host.multi.remoteDown(), null);
+
+guest.multi.sendCallout(1);
+await flush();
+assert.ok(host.elements.hint.textContent.includes('她来了'), '房主应看到喊话内容');
+assert.ok(host.game.attractCalls.length >= 1, '喊话应引起她的注意（房主权威）');
+
+/* 倒地者不应成为鬼的目标 */
+host.game.DOWN.on = true;
+host.game.GHOST.on = true;
+host.game.GHOST.x = host.game.P.x + 0.2;
+host.game.GHOST.y = host.game.P.y;
+guest.game.P.x = 20; guest.game.P.y = 10;
+guest.multi.update(0.2);
+await flush();
+const tgt = host.multi.closestTarget(host.game.P);
+assert.equal(tgt.remote, true, '本地倒地时她应转向队友');
+host.game.DOWN.on = false;
 
 host.game.GHOST.on = true;
 host.game.GHOST.mode = 'patrol';

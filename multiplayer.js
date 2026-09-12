@@ -38,8 +38,11 @@
     remote: {
       name: '队友', x: 2.5, y: 2.5, a: 0,
       tx: 2.5, ty: 2.5, ta: 0,
-      mode: 'title', hidden: false, dead: false, seenAt: 0
+      mode: 'title', hidden: false, dead: false, seenAt: 0,
+      light: true, run: false, down: false,
+      phase: 0, calloutAt: 0, calloutText: ''
     },
+    ghostT: null,
     three: null
   };
 
@@ -50,6 +53,7 @@
   };
   const safeText = (value, fallback = '') => String(value || fallback).replace(/[<>\r\n]/g, '').trim();
   const connected = () => !!(NET.active && NET.conn && NET.conn.open);
+  const isAuthorityFn = () => !connected() || NET.host;
   const mapWidth = () => clamp(NET.ctx && NET.ctx.MW, 1, 256, 20);
   const mapHeight = () => clamp(NET.ctx && NET.ctx.MH, 1, 256, 14);
 
@@ -182,8 +186,11 @@
       : clamp(world.minute, 0, 180, ctx.S.minute);
 
     if (world.ghost && typeof world.ghost === 'object' && !ctx.HIDE.on) {
-      ctx.GHOST.x = clamp(world.ghost.x, 0, mapWidth(), ctx.GHOST.x);
-      ctx.GHOST.y = clamp(world.ghost.y, 0, mapHeight(), ctx.GHOST.y);
+      const gx = clamp(world.ghost.x, 0, mapWidth(), ctx.GHOST.x);
+      const gy = clamp(world.ghost.y, 0, mapHeight(), ctx.GHOST.y);
+      const jump = Math.hypot(gx - ctx.GHOST.x, gy - ctx.GHOST.y) > 4 || !ctx.GHOST.on;
+      NET.ghostT = { x: gx, y: gy };
+      if (jump) { ctx.GHOST.x = gx; ctx.GHOST.y = gy; }
       ctx.GHOST.on = !!world.ghost.on;
       ctx.GHOST.mode = safeText(world.ghost.mode, 'none').slice(0, 12) || 'none';
       ctx.GHOST.t = clamp(world.ghost.t, 0, 30, 0);
@@ -219,6 +226,12 @@
     NET.remote.ta = clamp(data.a, -Math.PI * 20, Math.PI * 20, NET.remote.ta);
     NET.remote.mode = safeText(data.mode, 'title').slice(0, 12);
     NET.remote.hidden = !!data.hidden;
+    NET.remote.light = data.light !== false;
+    NET.remote.run = !!data.run;
+    const wasDown = NET.remote.down;
+    NET.remote.down = !!data.down;
+    if (NET.remote.down && !wasDown && performance.now() - (NET.reviveSentAt || 0) > 1500)
+      showHint(`${NET.remote.name} 倒下了！快过去搀扶！`, true);
     NET.remote.dead = NET.remote.mode === 'end';
     NET.remote.seenAt = performance.now();
     updateThreeName();
@@ -282,6 +295,32 @@
         if (NET.ctx && NET.ctx.S.mode === 'play') {
           NET.ctx.jumpscare(() => NET.ctx.endGame('caught'));
         }
+        break;
+      case 'grab':
+        if (NET.ctx && NET.ctx.S.mode === 'play' && NET.ctx.enterDown) NET.ctx.enterDown();
+        break;
+      case 'revive':
+        if (NET.ctx && NET.ctx.exitDown) NET.ctx.exitDown(true);
+        break;
+      case 'callout': {
+        const texts = ['来这边！', '她来了！！', '躲起来！'];
+        const text = texts[clamp(message.i, 0, 2, 0)] || texts[0];
+        NET.remote.calloutText = text;
+        NET.remote.calloutAt = performance.now();
+        updateBubble(text);
+        showHint(`${NET.remote.name}：「${text}」`, message.i === 1);
+        const cx = clamp(message.x, 0, mapWidth(), NET.remote.x), cy = clamp(message.y, 0, mapHeight(), NET.remote.y);
+        if (NET.ctx && NET.ctx.playCallout) NET.ctx.playCallout(cx, cy);
+        if (NET.host && NET.ctx && NET.ctx.attractGhost) NET.ctx.attractGhost(cx, cy);
+        break;
+      }
+      case 'callout-noise':
+        if (NET.host && NET.ctx && NET.ctx.attractGhost)
+          NET.ctx.attractGhost(clamp(message.x, 0, mapWidth(), NET.remote.x), clamp(message.y, 0, mapHeight(), NET.remote.y));
+        break;
+      case 'mate-died':
+        showHint('她把你的同伴拖走了……', true);
+        if (NET.host && NET.ctx && NET.ctx.GHOST) NET.ctx.GHOST.cool = 3;
         break;
       case 'full':
         setStatus('这个房间已经有两个人了', 'error');
@@ -507,15 +546,27 @@
       y: ctx.P.y,
       a: ctx.P.a,
       mode: ctx.S.mode,
-      hidden: ctx.HIDE.on
+      hidden: ctx.HIDE.on,
+      light: !(ctx.LIGHT) || !!ctx.LIGHT.on,
+      run: !!(ctx.STAM && ctx.STAM.running),
+      down: !!(ctx.DOWN && ctx.DOWN.on)
     };
   }
 
   function update(dt) {
     if (!NET.ctx) return;
     const smooth = Math.min(1, dt * 10);
+    const px0 = NET.remote.x, py0 = NET.remote.y;
     NET.remote.x += (NET.remote.tx - NET.remote.x) * smooth;
     NET.remote.y += (NET.remote.ty - NET.remote.y) * smooth;
+    const spd = Math.hypot(NET.remote.x - px0, NET.remote.y - py0) / Math.max(dt, .001);
+    NET.remote.phase += dt * Math.min(13, spd * 3.2);
+    NET.remote.spd = spd;
+    if (!isAuthorityFn() && NET.ghostT && NET.ctx.GHOST.on && !NET.ctx.HIDE.on) {
+      const g = NET.ctx.GHOST, gs = Math.min(1, dt * 8);
+      g.x += (NET.ghostT.x - g.x) * gs;
+      g.y += (NET.ghostT.y - g.y) * gs;
+    }
     let angleDelta = NET.remote.ta - NET.remote.a;
     while (angleDelta > Math.PI) angleDelta -= Math.PI * 2;
     while (angleDelta < -Math.PI) angleDelta += Math.PI * 2;
@@ -539,9 +590,11 @@
 
   function closestTarget(localPlayer) {
     const local = { x: localPlayer.x, y: localPlayer.y, remote: false };
-    if (!connected() || NET.remote.mode !== 'play' || NET.remote.hidden || NET.remote.dead) return local;
+    const remoteValid = connected() && NET.remote.mode === 'play' && !NET.remote.hidden && !NET.remote.dead && !NET.remote.down;
+    if (!remoteValid) return local;
     const ghost = NET.ctx && NET.ctx.GHOST;
     if (!ghost) return local;
+    if (NET.ctx.DOWN && NET.ctx.DOWN.on) return { x: NET.remote.x, y: NET.remote.y, remote: true };
     const localDistance = Math.hypot(local.x - ghost.x, local.y - ghost.y);
     const remoteDistance = Math.hypot(NET.remote.x - ghost.x, NET.remote.y - ghost.y);
     return remoteDistance + 0.12 < localDistance
@@ -550,11 +603,21 @@
   }
 
   function catchRemote() {
+    const ctx = NET.ctx;
+    const localAlive = ctx && ctx.S.mode === 'play' && !(ctx.DOWN && ctx.DOWN.on);
+    if (localAlive) {
+      send({ type: 'grab' });
+      NET.remote.down = true;
+      showHint(`她抓倒了 ${NET.remote.name}！快去搀扶！`, true);
+      return 'down';
+    }
     send({ type: 'caught' });
     NET.remote.dead = true;
     NET.remote.mode = 'end';
     showHint(`${NET.remote.name} 被她追上了`, true);
+    return 'dead';
   }
+  const mateAlive = () => connected() && NET.remote.mode === 'play' && !NET.remote.dead && !NET.remote.down;
 
   function makeNameTexture(THREE, name) {
     const canvas = document.createElement('canvas');
@@ -576,25 +639,103 @@
     return texture;
   }
 
+  function makeBubbleTexture(THREE, text) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 72;
+    const g = canvas.getContext('2d');
+    g.clearRect(0, 0, 256, 72);
+    g.fillStyle = 'rgba(233,228,214,.95)';
+    g.strokeStyle = 'rgba(30,30,26,.9)';
+    g.lineWidth = 3;
+    const r = 14;
+    g.beginPath();
+    g.moveTo(20 + r, 4); g.lineTo(236 - r, 4); g.arcTo(236, 4, 236, 4 + r, r);
+    g.lineTo(236, 48 - r); g.arcTo(236, 48, 236 - r, 48, r);
+    g.lineTo(140, 48); g.lineTo(128, 66); g.lineTo(116, 48);
+    g.lineTo(20 + r, 48); g.arcTo(20, 48, 20, 48 - r, r);
+    g.lineTo(20, 4 + r); g.arcTo(20, 4, 20 + r, 4, r);
+    g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = '#8e1f1a';
+    g.font = '700 26px "Noto Sans SC",sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(text, 128, 27);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  function updateBubble(text) {
+    const view = NET.three;
+    if (!view) return;
+    const old = view.bubble.material.map;
+    view.bubble.material.map = makeBubbleTexture(view.THREE, text);
+    view.bubble.material.needsUpdate = true;
+    if (old) old.dispose();
+  }
+
   function bindThree(scene, THREE) {
     if (!scene || !THREE || NET.three) return;
     const group = new THREE.Group();
-    const coat = new THREE.MeshPhongMaterial({ color: 0x526e61, emissive: 0x101c17, shininess: 7 });
-    const skin = new THREE.MeshPhongMaterial({ color: 0xb9ad9c, emissive: 0x181410, shininess: 4 });
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.24, 0.56, 10), coat);
-    body.position.y = 0.33;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 8), skin);
-    head.position.y = 0.72;
-    const lamp = new THREE.PointLight(0xb8d6c7, 0.55, 2.8, 1.8);
-    lamp.position.set(0, 0.58, -0.2);
+    const jacket = new THREE.MeshPhongMaterial({ color: 0x2e3d34, shininess: 26, specular: 0x060806 });
+    const pants = new THREE.MeshPhongMaterial({ color: 0x1c2124, shininess: 22, specular: 0x050607 });
+    const skin = new THREE.MeshPhongMaterial({ color: 0x8a7a68, shininess: 18, specular: 0x0a0806 });
+    const hairM = new THREE.MeshPhongMaterial({ color: 0x0d0c0b, shininess: 30, specular: 0x080808 });
+    const limb = (w, h, d, mat, px, py, pz) => {
+      const pivot = new THREE.Group();
+      pivot.position.set(px, py, pz);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.position.y = -h / 2;
+      m.castShadow = true;
+      pivot.add(m);
+      return pivot;
+    };
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.4, 0.15), jacket);
+    torso.position.y = 0.6; torso.castShadow = true; group.add(torso);
+    const hip = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.14), pants);
+    hip.position.y = 0.4; group.add(hip);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.095, 12, 9), skin);
+    head.position.y = 0.93; head.castShadow = true; group.add(head);
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 9), hairM);
+    hair.position.set(0, 0.95, 0.015); hair.scale.set(1, 0.86, 1); group.add(hair);
+    const legL = limb(0.09, 0.4, 0.11, pants, -0.07, 0.4, 0);
+    const legR = limb(0.09, 0.4, 0.11, pants, 0.07, 0.4, 0);
+    const armL = limb(0.07, 0.34, 0.09, jacket, -0.17, 0.79, 0);
+    const armR = limb(0.07, 0.34, 0.09, jacket, 0.17, 0.79, 0);
+    armR.rotation.x = -1.2; /* 端着手电 */
+    const torchBody = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.028, 0.13, 8),
+      new THREE.MeshPhongMaterial({ color: 0x3a3f44, shininess: 40 }));
+    torchBody.rotation.x = Math.PI / 2;
+    torchBody.position.set(0, -0.32, -0.03);
+    armR.add(torchBody);
+    const torchTip = new THREE.Mesh(new THREE.CircleGeometry(0.024, 8),
+      new THREE.MeshPhongMaterial({ color: 0xf2ecc8, emissive: 0xf2ecc8, emissiveIntensity: 1.4 }));
+    torchTip.position.set(0, -0.32, -0.1);
+    armR.add(torchTip);
+    group.add(legL, legR, armL, armR);
+    const beamTarget = new THREE.Object3D();
+    beamTarget.position.set(0.1, 0, -3);
+    group.add(beamTarget);
+    const beam = new THREE.SpotLight(0xd8e6c2, 1.0, 9, 0.5, 0.6, 1.4);
+    beam.position.set(0.15, 0.5, -0.7);   /* 光源在身体前方 0.7，只照前方地面，不照自己 */
+    beam.target = beamTarget;
+    group.add(beam);
+    const lamp = new THREE.PointLight(0xb8d6c7, 0.16, 2.4, 1.8);
+    lamp.position.set(0, 0.55, -0.55);
+    group.add(lamp);
     const labelMaterial = new THREE.SpriteMaterial({ map: makeNameTexture(THREE, NET.remote.name), transparent: true, depthWrite: false });
     const label = new THREE.Sprite(labelMaterial);
-    label.position.y = 1.04;
+    label.position.y = 1.26;
     label.scale.set(0.82, 0.2, 1);
-    group.add(body, head, lamp, label);
+    group.add(label);
+    const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeBubbleTexture(THREE, '……'), transparent: true, depthWrite: false }));
+    bubble.position.y = 1.52;
+    bubble.scale.set(1.05, 0.3, 1);
+    bubble.visible = false;
+    group.add(bubble);
     group.visible = false;
     scene.add(group);
-    NET.three = { THREE, group, label, name: NET.remote.name };
+    NET.three = { THREE, group, label, bubble, beam, lamp, torchTip, legL, legR, armL, armR, name: NET.remote.name };
   }
 
   function updateThreeName() {
@@ -616,18 +757,60 @@
       && !NET.remote.hidden
       && !NET.remote.dead;
     if (!view.group.visible) return;
-    view.group.position.set(NET.remote.x, 0, NET.remote.y);
-    view.group.rotation.y = -NET.remote.a - Math.PI / 2;
+    const r = NET.remote;
+    view.group.position.set(r.x, 0, r.y);
+    view.group.rotation.y = -r.a - Math.PI / 2;
+    if (r.down) {
+      view.group.rotation.z = Math.PI / 2;
+      view.group.position.y = 0.14;
+      view.legL.rotation.x = 0.25; view.legR.rotation.x = -0.15;
+      view.armL.rotation.x = 0.4; view.armR.rotation.x = -0.5;
+      view.beam.intensity = 0; view.lamp.intensity = 0.1;
+      view.lamp.color.setHex(0xc84a3a);
+      view.torchTip.material.emissiveIntensity = 0.1;
+    } else {
+      view.group.rotation.z = 0;
+      const swing = Math.min(1, (r.spd || 0) / 2.2);
+      const ph = r.phase || 0;
+      view.legL.rotation.x = Math.sin(ph) * 0.58 * swing;
+      view.legR.rotation.x = -Math.sin(ph) * 0.58 * swing;
+      view.armL.rotation.x = -Math.sin(ph) * 0.45 * swing;
+      view.armR.rotation.x = -1.2 + Math.sin(ph * 2) * 0.04 * swing;
+      view.group.position.y = Math.abs(Math.sin(ph)) * 0.022 * swing;
+      view.beam.intensity = r.light ? 0.9 : 0;
+      view.lamp.intensity = r.light ? 0.16 : 0.04;
+      view.lamp.color.setHex(0xb8d6c7);
+      view.torchTip.material.emissiveIntensity = r.light ? 1.4 : 0.05;
+    }
+    view.bubble.visible = performance.now() - r.calloutAt < 3000;
   }
 
   function remoteSprite() {
     if (!connected() || !NET.ctx || NET.ctx.S.mode !== 'play' || NET.remote.mode !== 'play' || NET.remote.hidden || NET.remote.dead) return null;
-    return { player: true, x: NET.remote.x, y: NET.remote.y, a: NET.remote.a, name: NET.remote.name };
+    return { player: true, x: NET.remote.x, y: NET.remote.y, a: NET.remote.a, name: NET.remote.name, down: NET.remote.down, light: NET.remote.light };
   }
 
   function drawCanvasPlayer(context, sx, base, size, object) {
     context.save();
     context.translate(sx, base);
+    if (object.down) {
+      context.fillStyle = 'rgba(120,40,32,.85)';
+      context.beginPath();
+      context.ellipse(0, -size * 0.08, size * 0.3, size * 0.09, 0, 0, Math.PI * 2);
+      context.fill();
+      context.font = `600 ${Math.max(10, size * 0.12)}px sans-serif`;
+      context.textAlign = 'center';
+      context.fillStyle = '#e2b4aa';
+      context.fillText(safeText(object.name, '队友') + ' 倒下了', 0, -size * 0.24);
+      context.restore();
+      return;
+    }
+    if (object.light) {
+      context.fillStyle = 'rgba(242,236,200,.9)';
+      context.beginPath();
+      context.arc(size * 0.14, -size * 0.5, size * 0.035, 0, Math.PI * 2);
+      context.fill();
+    }
     context.shadowColor = 'rgba(143,179,160,.55)';
     context.shadowBlur = Math.max(5, size * 0.08);
     context.fillStyle = '#526e61';
@@ -672,8 +855,26 @@
     addEventListener('beforeunload', () => disconnect(false));
   }
 
+  function sendCallout(i) {
+    if (!connected() || !NET.ctx) return false;
+    const idx = clamp(i, 0, 2, 0);
+    send({ type: 'callout', i: idx, x: NET.ctx.P.x, y: NET.ctx.P.y });
+    if (NET.host && NET.ctx.attractGhost) NET.ctx.attractGhost(NET.ctx.P.x, NET.ctx.P.y);
+    return true;
+  }
+  function sendRevive() { send({ type: 'revive' }); NET.remote.down = false; NET.reviveSentAt = performance.now(); }
+  function sendMateDied() { send({ type: 'mate-died' }); }
+  function remoteDown() {
+    return connected() && NET.remote.mode === 'play' && NET.remote.down && !NET.remote.dead
+      ? { x: NET.remote.x, y: NET.remote.y, name: NET.remote.name } : null;
+  }
   window.MULTI = {
     init,
+    sendCallout,
+    sendRevive,
+    sendMateDied,
+    remoteDown,
+    mateAlive,
     update,
     bindThree,
     remoteSprite,

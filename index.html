@@ -65,6 +65,19 @@ body.playing #runBtn,body.playing #lightBtn{display:flex;}
 #popts.breaker .opt.wide{grid-column:span 3;letter-spacing:.3em;}
 #ptext .code{font-family:'Noto Serif SC',serif;font-size:26px;letter-spacing:.5em;color:var(--bone);}
 #dangerVig{position:fixed;inset:0;z-index:7;pointer-events:none;opacity:0;background:radial-gradient(ellipse 70% 65% at 50% 50%,transparent 45%,rgba(120,10,10,.55) 100%);transition:opacity .25s;}
+#mateDir{font-size:9px;letter-spacing:.12em;color:#7d968a;margin-top:4px;}
+#mateDir.down{color:#c56b61;}
+#callBtn{position:fixed;z-index:12;right:14px;top:calc(74px + env(safe-area-inset-top));display:none;
+  appearance:none;border:1px solid rgba(143,179,160,.28);border-radius:20px;background:rgba(5,8,7,.66);color:#77877f;
+  padding:6px 11px;font:300 10px/1 'Noto Sans SC',sans-serif;letter-spacing:.12em;touch-action:manipulation;}
+body.playing #callBtn.online{display:block;}
+#callBtn:active{border-color:var(--phosphor);color:var(--phosphor);}
+#calloutBar{position:fixed;z-index:13;right:14px;top:calc(108px + env(safe-area-inset-top));display:none;flex-direction:column;gap:6px;}
+#calloutBar.on{display:flex;}
+#calloutBar button{appearance:none;border:1px solid #2e4438;border-radius:16px;background:rgba(8,14,11,.88);color:#aeb9b1;
+  padding:8px 14px;font:400 12px/1 'Noto Sans SC',sans-serif;letter-spacing:.12em;touch-action:manipulation;}
+#calloutBar button:active{border-color:var(--phosphor);color:var(--phosphor);}
+#calloutBar button.danger{border-color:#45201d;color:#b0776e;}
 #inv{position:fixed;z-index:8;top:calc(72px + env(safe-area-inset-top));left:16px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none;max-width:62vw;}
 .tag{font-size:10px;letter-spacing:.2em;color:var(--paper);border:1px solid #33301f;padding:2px 7px;background:rgba(20,18,10,.6);}
 #musicToggle{position:fixed;z-index:12;right:14px;top:calc(38px + env(safe-area-inset-top));display:none;align-items:center;gap:6px;
@@ -230,7 +243,7 @@ body.playing #verTag{display:none;}
 <div id="grain"></div>
 
 <div id="hud">
-  <div><div id="clock">23:41</div><div id="zone">自习室</div><div id="objective">目标 · 调查桌上的纸条</div><div id="side"></div></div>
+  <div><div id="clock">23:41</div><div id="zone">自习室</div><div id="objective">目标 · 调查桌上的纸条</div><div id="side"></div><div id="mateDir"></div></div>
   <div><div id="fearbar"><div id="fearfill"></div></div><div id="stambar"><div id="stamfill"></div></div></div>
 </div>
 <div id="dangerVig"></div>
@@ -238,6 +251,12 @@ body.playing #verTag{display:none;}
 <button id="musicToggle" type="button" aria-label="关闭配乐" aria-pressed="true"><span class="note" aria-hidden="true">♪</span><span id="musicState">配乐</span></button>
 <div id="trackToast" role="status" aria-live="polite"></div>
 <button id="netBadge" type="button" aria-label="查看联机状态"></button>
+<button id="callBtn" type="button" aria-label="向队友喊话">📢 喊话</button>
+<div id="calloutBar" role="menu">
+  <button type="button" data-i="0">来这边！</button>
+  <button type="button" data-i="1" class="danger">她来了！！</button>
+  <button type="button" data-i="2">躲起来！</button>
+</div>
 
 <div id="stickZone"><div id="stick"><div id="knob"></div></div></div>
 <div id="lookZone"></div>
@@ -257,7 +276,7 @@ body.playing #verTag{display:none;}
 
 <div id="scare" aria-hidden="true"><img src="assets/ghost/ghost-bride-scare.webp" alt=""></div>
 
-<div id="verTag">ver 1.6.1</div>
+<div id="verTag">ver 1.7.0</div>
 <div class="screen on" id="titleScreen">
   <canvas id="titleFx" aria-hidden="true"></canvas>
   <div id="titleSeal">十三</div>
@@ -563,9 +582,11 @@ const P={x:2.5,y:2.5,a:0};
 const GHOST={x:0,y:0,on:false,mode:'none',t:0,path:null,pathT:0,wp:-1,cool:0,lost:0,stepT:0,humT:4,seen:false,face:0};
 const STAM={v:1,run:false,tired:false,breathT:0};
 const LIGHT={on:true};
+const DOWN={on:false,t:0,limit:60};
+const REVIVE={on:false,t:0,need:2.6};
 const $=id=>document.getElementById(id);
 function pagesCount(){return S.pages.filter(Boolean).length;}
-function addFear(n){S.fear=Math.max(0,Math.min(100,S.fear+n));$('fearfill').style.width=S.fear+'%';$('grain').style.opacity=(0.07+S.fear/100*0.22).toFixed(2);$('vig').style.opacity=(0.4+S.fear/100*0.4).toFixed(2);heart(S.fear>=60);if(S.fear>=100)endGame('mad');}
+function addFear(n){S.fear=Math.max(0,Math.min(100,S.fear+n));$('fearfill').style.width=S.fear+'%';$('grain').style.opacity=(0.07+S.fear/100*0.22).toFixed(2);$('vig').style.opacity=(0.4+S.fear/100*0.4).toFixed(2);heart(S.fear>=60);if(S.fear>=100){if(DOWN.on)S.fear=99;else endGame('mad');}}
 /* ---- 存档点：单人模式下每拿到关键线索自动记录，死亡后可从断点继续 ---- */
 const CK_KEY='d13_checkpoint';
 function online(){return !!(window.MULTI&&MULTI.isConnected());}
@@ -766,6 +787,71 @@ function doorHit(){
 function startChase(){S.flags.chase=true;GHOST.on=true;GHOST.mode='chase';GHOST.x=18.3;GHOST.y=8.5;playMusic('danger',600);addFear(12);sfxScream();
   if(navigator.vibrate)navigator.vibrate([60,40,60]);shareWorld('chase');}
 
+/* ============ 双人协作：倒地 / 搀扶 / 喊话 ============ */
+function enterDown(){
+  if(DOWN.on||S.mode!=='play')return;
+  DOWN.on=true;DOWN.t=DOWN.limit;
+  hideCleanup();closePanel();REVIVE.on=false;
+  S.fear=Math.min(S.fear,72);addFear(12);
+  GHOST.mode='patrol';GHOST.cool=18;GHOST.path=null;GHOST.lost=0;
+  sfxScream();document.body.classList.add('shake');setTimeout(()=>document.body.classList.remove('shake'),700);
+  if(navigator.vibrate)navigator.vibrate([120,60,160]);
+  playMusic('danger',600);heart(true);
+  const ht=$('hint');ht.textContent='她把你拽倒了！你还能爬……坚持住，等队友来扶！';ht.style.color='#c53a2e';ht.style.opacity=1;
+  shareWorld('down');}
+function exitDown(byMate){
+  if(!DOWN.on)return;
+  DOWN.on=false;REVIVE.on=false;
+  addFear(-10);heart(S.fear>=60);
+  const ht=$('hint');ht.style.color='';
+  ht.textContent=byMate?'队友把你拉了起来。别分开走了。':'你自己撑了过来。';
+  ht.style.opacity=1;setTimeout(()=>ht.style.opacity=0,3000);
+  playMusic('explore',900);shareWorld('revived');}
+function bleedOut(){
+  if(!DOWN.on)return;
+  DOWN.on=false;
+  if(window.MULTI)MULTI.sendMateDied();
+  jumpscare(()=>endGame('dragged'));}
+function startRevive(){
+  const md=window.MULTI&&MULTI.remoteDown();if(!md)return;
+  REVIVE.on=true;REVIVE.t=0;sfxClick();
+  const ht=$('hint');ht.textContent='正在搀扶……别松手，也别走开';ht.style.color='';ht.style.opacity=1;}
+function reviveUpdate(dt){
+  if(!REVIVE.on)return;
+  const md=window.MULTI&&MULTI.remoteDown();
+  if(!md||panelOpen||HIDE.on){REVIVE.on=false;return;}
+  if(Math.hypot(md.x-P.x,md.y-P.y)>1.5){REVIVE.on=false;
+    const ht=$('hint');ht.textContent='离得太远，搀扶中断了！';ht.style.color='#c53a2e';ht.style.opacity=1;return;}
+  REVIVE.t+=dt;
+  const ht=$('hint');ht.textContent='搀扶中 '+Math.round(Math.min(1,REVIVE.t/REVIVE.need)*100)+'% ……';ht.style.opacity=1;
+  if(REVIVE.t>=REVIVE.need){REVIVE.on=false;MULTI.sendRevive();addFear(-4);
+    ht.textContent='把'+md.name+'拉起来了！';setTimeout(()=>ht.style.opacity=0,2500);}}
+function attractGhost(x,y){
+  if(GHOST.on&&GHOST.mode==='patrol'&&GHOST.cool<=0){
+    const p2=findPath(GHOST.x,GHOST.y,x,y);
+    if(p2){GHOST.path=p2;GHOST.t=0;GHOST.wp=-1;}}}
+function sfxShout(x,y){const a=ac();if(!a)return;const sp=spatial(x,y);if(sp.vol<=.02)return;
+  [0,.16].forEach((t2,i)=>{const o=a.createOscillator();o.type='triangle';
+    o.frequency.setValueAtTime(i?520:420,a.currentTime+t2);o.frequency.exponentialRampToValueAtTime(i?390:520,a.currentTime+t2+.13);
+    const g=a.createGain();g.gain.setValueAtTime(.001,a.currentTime+t2);g.gain.exponentialRampToValueAtTime(.09*sp.vol,a.currentTime+t2+.02);
+    g.gain.exponentialRampToValueAtTime(.001,a.currentTime+t2+.15);
+    o.connect(g);g.connect(outNode(a,sp.pan));o.start(a.currentTime+t2);o.stop(a.currentTime+t2+.18);});}
+let mateDirT=0;
+function updateMateDir(dt){
+  mateDirT-=dt;if(mateDirT>0)return;mateDirT=.5;
+  const cb=$('callBtn');if(cb)cb.classList.toggle('online',!!(window.MULTI&&MULTI.isConnected()));
+  const el2=$('mateDir');if(!el2)return;
+  const md=window.MULTI&&MULTI.remoteDown();
+  const mate=md||(window.MULTI&&MULTI.isConnected()&&MULTI.remoteSprite());
+  if(!mate){el2.textContent='';return;}
+  const dx=mate.x-P.x,dy=mate.y-P.y,d=Math.hypot(dx,dy);
+  if(!md&&d<5){el2.textContent='';el2.classList.remove('down');return;}
+  const rel=Math.atan2(dy,dx)-P.a;
+  const c2=Math.cos(rel),s2=Math.sin(rel);
+  const dir=Math.abs(c2)>Math.abs(s2)?(c2>0?'前方':'后方'):(s2>0?'右侧':'左侧');
+  el2.textContent=(md?'⚠ 队友倒下了 · ':'队友 · ')+dir+' '+Math.round(d*2)+' 米';
+  el2.classList.toggle('down',!!md);}
+
 /* ============ 躲藏系统：课桌底 & 铁柜（全楼多处） ============ */
 const HIDE={on:false,kind:null,spot:null,prev:'none',phase:0,t:0,breath:1,hold:false,expose:0,gx:0,gy:0,lx:0,ly:0};
 function startHide(spot){
@@ -888,7 +974,7 @@ function ghostAI(dt){
     if(sees&&d<5){tryGhost(GHOST.x+dx/d*gs,GHOST.y+dy/d*gs);GHOST.face=Math.atan2(dy,dx);}
     else followPath(gs);
     if(sees||d<noise)GHOST.lost=0;else GHOST.lost+=dt;
-    if(d<0.55){if(target.remote&&window.MULTI)MULTI.catchRemote();else jumpscare(()=>endGame('caught'));GHOST.on=false;GHOST.mode='none';GHOST.cool=12;shareWorld('caught');return;}
+    if(d<0.55){catchPlayer(target,false);return;}
     if(GHOST.lost>3.5&&d>3.5)endHunt();
   }
   GHOST.stepT-=dt;
@@ -937,6 +1023,7 @@ function jumpscare(then,hold=1400){sfxScream();document.body.classList.add('shak
   setTimeout(()=>{$('scare').classList.remove('on');document.body.classList.remove('shake');if(then)then();},hold);}
 const ENDS={
  home:{name:'归 路',tag:'隐藏真结局 · 记得',dead:false,story:`你没有回头。\n你把红头绳一圈一圈系在伞柄上，再将伞递到身后。\n\n那只冰冷的手碰到红线时，忽然颤了一下。\n磁带在书包里自行转动。苏禾迟到三十九年的声音穿过雨幕：\n「小晚，等我。」\n\n桥上不再只有数台阶的声音。\n林晚很轻地笑了，像照片里那个还没来得及赴约的女孩。\n她接过伞，沿着红线映出的微光，向桥的另一头走去。\n第十三阶在她身后慢慢沉进雨水。\n\n天亮后，你把卷宗、磁带与合照交给了校史馆。\n学校在旧桥旁立起一块小小的纪念牌：\n「林晚，旧校合唱队领唱。她曾在这里生活，也曾被人等待。」\n\n六月十三日的傍晚，有人把一把系着红头绳的黑伞放在牌前。\n没有署名。\n只有一张便签：\n「这次，我没有迟到。——苏禾」\n\n从此，旧桥永远只有十二阶。`},
+ dragged:{name:'拖 走',tag:'结局 · 没等到搀扶',dead:true,story:`地面很凉。\n你数着自己越来越慢的心跳，听见走廊尽头有人在喊你的名字。\n\n脚步声越来越近——\n不是同伴的。\n\n她把你往黑暗里拖的时候，你最后看见的，\n是手电的光柱扫过来，晚了一步，落在空空的地板上。\n\n第二天，走廊尽头多了一道长长的水痕。\n从楼梯口，一直拖到墙角。\n在墙那里，突然断了。`},
  twelve:{name:'十 二 阶',tag:'真结局 · 不数完',dead:false,story:`你在第十二阶停了下来。\n没有回头，也没有把脚放下去。\n\n身后，那个跟着你数数的声音，慢了半拍，然后彻底安静了。\n雨声里有人很轻地吸了一口气，像是三十九年来第一次不用再数。\n\n你把伞收起来，转身，一阶一阶往回走。\n十二。十一。十。\n每走下一阶，身后的雨就小一分。\n走到桥头时，雨停了。\n\n天亮后，你把那五页日记交给了校史馆。\n最后一页被人用铅笔补了一行小字，不是你的笔迹：\n「谢谢你替我停下来。」\n\n从此，雨夜路过旧桥的人还会听见有人数数——\n但永远只数到十二。`},
  umbrella:{name:'雨 停',tag:'真结局 · 还伞',dead:false,story:`你没有回头。\n你只是把那把旧伞，往身后递了过去。\n\n肩上的手松开了。\n伞被很轻、很轻地接住。\n\n「……等到了。」\n\n身后传来伞面撑开的声音。雨声忽然远了。\n你陪着那阵几乎听不见的脚步声，\n一起走完了第十三阶。\n落脚的时候，脚下是桥那头的泥土。\n你回头——旧桥安安静静立在雨里。\n十二阶。\n\n第二天，你把伞交到了失物招领处。\n登记簿最旧的那一页写着：\n「1987.6 · 林晚 · 黑布伞一把 · 未领」\n你在「未领」两个字上，替她轻轻画了一条横线。\n\n从那以后，雨夜的旧桥，\n再没有人数出过十三阶。`},
  recording:{name:'迟到的声音',tag:'结局 · 回音',dead:false,story:`你没有回头，只把磁带按下播放。\n\n「小晚，我是苏禾。你别上桥，等我……」\n\n肩上的手慢慢松开。身后的女孩听完了整盘磁带，直到塑料齿轮空转。\n她没有再问你借伞，只轻轻说：\n「她来过。只是来晚了。」\n\n你活着走下桥。可第十三阶没有消失。\n往后的雨夜，桥边偶尔会响起磁带沙沙的底噪，随后是两个隔着三十九年、始终没能碰面的声音。\n一个说「等我」。\n另一个说「我还在」。`},
@@ -983,6 +1070,16 @@ function syncLightBtn(){const b=$('lightBtn');if(!b)return;b.classList.toggle('o
 function toggleLight(){LIGHT.on=!LIGHT.on;sfxClick();syncLightBtn();
   if(!LIGHT.on){const ht=$('hint');ht.textContent='手电关了。她看不见你，但你也看不见她。';ht.style.color='';ht.style.opacity=1;setTimeout(()=>ht.style.opacity=0,2200);}}
 $('lightBtn').addEventListener('click',()=>{if(S.mode==='play')toggleLight();});
+$('callBtn').addEventListener('click',()=>{$('calloutBar').classList.toggle('on');});
+document.querySelectorAll('#calloutBar button').forEach(b2=>b2.addEventListener('click',()=>{
+  $('calloutBar').classList.remove('on');
+  const i2=+b2.dataset.i;
+  if(window.MULTI&&MULTI.sendCallout(i2)){
+    const t2=['来这边！','她来了！！','躲起来！'][i2];
+    const ht=$('hint');ht.textContent='你喊了一声：「'+t2+'」……声音在楼里传开了';
+    ht.style.color=i2===1?'#c53a2e':'';ht.style.opacity=1;
+    clearTimeout(window.__callT);window.__callT=setTimeout(()=>ht.style.opacity=0,2400);}
+}));
 // 摇杆
 const stickZone=$('stickZone'),stick=$('stick'),knob=$('knob');
 let stickId=null,stickCx=0,stickCy=0;
@@ -1010,7 +1107,10 @@ addEventListener('pointerup',lookEnd);addEventListener('pointercancel',lookEnd);
 const actBtn=$('actBtn');let nearItem=null;
 actBtn.onclick=()=>{if(nearItem){sfxClick();nearItem.act();}};
 function checkNear(){nearItem=null;
-  if(panelOpen||S.mode!=='play'||HIDE.on){actBtn.style.display='none';return;}
+  if(panelOpen||S.mode!=='play'||HIDE.on||DOWN.on){actBtn.style.display='none';return;}
+  const md0=window.MULTI&&MULTI.remoteDown&&MULTI.remoteDown();
+  if(md0&&!REVIVE.on&&Math.hypot(md0.x-P.x,md0.y-P.y)<1.3){
+    nearItem={label:'搀扶 '+md0.name,act:startRevive};actBtn.style.display='block';actBtn.textContent=nearItem.label;return;}
   if(S.flags.doorSeq){nearItem={label:'撞 门',act:doorHit};actBtn.style.display='block';actBtn.textContent='撞 门！';return;}
   const gd=GHOST.on?Math.hypot(GHOST.x-P.x,GHOST.y-P.y):99;
   const canHide=GHOST.on&&(GHOST.mode==='block'||GHOST.mode==='chase'||GHOST.mode==='hunt'||(GHOST.mode==='patrol'&&gd<9));
@@ -1049,9 +1149,30 @@ function areaStoryEvent(){
 function tryMove(nx,ny){const r=0.22;
   if(!wallAt(nx+r,P.y)&&!wallAt(nx-r,P.y))P.x=nx;
   if(!wallAt(P.x,ny+r)&&!wallAt(P.x,ny-r))P.y=ny;}
+let downHintT=0;
 function update(dt){
   if(panelOpen||S.mode!=='play')return;
   if(HIDE.on){hideUpdate(dt);return;}
+  if(DOWN.on){
+    DOWN.t-=dt;
+    let f=-move.y,s2=move.x;
+    if(keys['w'])f+=1;if(keys['s'])f-=1;if(keys['a'])s2-=1;if(keys['d'])s2+=1;
+    if(keys['arrowleft'])P.a-=1.6*dt;if(keys['arrowright'])P.a+=1.6*dt;
+    const sp=.55*dt,ca=Math.cos(P.a),sa=Math.sin(P.a);
+    const vx=(ca*f - sa*s2)*sp, vy=(sa*f + ca*s2)*sp;
+    playerMoving=!!(vx||vy);
+    if(vx||vy){tryMove(P.x+vx,P.y+vy);walkT+=dt;if(walkT>.8){walkT=0;sfxStep(.1);}}
+    downHintT-=dt;
+    if(downHintT<=0){downHintT=1;
+      const ht=$('hint');ht.textContent='你倒在地上……'+(window.MULTI&&MULTI.isConnected()?'等队友来扶！':'')+'还能撑 '+Math.max(0,Math.ceil(DOWN.t))+' 秒';
+      ht.style.color='#c53a2e';ht.style.opacity=1;}
+    $('dangerVig').style.opacity=(.5+.3*Math.sin(performance.now()*.006)).toFixed(2);
+    $('zone').textContent=zoneName(P.x,P.y);
+    const authority0=!window.MULTI||MULTI.isAuthority();
+    if(authority0)ghostAI(dt);
+    if(DOWN.t<=0){bleedOut();return;}
+    checkNear();return;
+  }
   let f=-move.y,s=move.x;
   if(keys['w'])f+=1;if(keys['s'])f-=1;if(keys['a'])s-=1;if(keys['d'])s+=1;
   if(keys['arrowleft'])P.a-=2.2*dt;if(keys['arrowright'])P.a+=2.2*dt;
@@ -1072,6 +1193,7 @@ function update(dt){
   /* 平静时恐惧缓慢回落：她不在附近、也没在追你 */
   else if(!GHOST.on||GHOST.mode==='none'||(GHOST.mode==='patrol'&&Math.hypot(GHOST.x-P.x,GHOST.y-P.y)>8))fearOver(dt,-.22);
   $('zone').textContent=zoneName(P.x,P.y);
+  reviveUpdate(dt);updateMateDir(dt);
   /* 危险感：她越近，红色脉冲越强 */
   const dv=$('dangerVig');if(GHOST.on&&GHOST.mode!=='flash'){const gd=Math.hypot(GHOST.x-P.x,GHOST.y-P.y);dv.style.opacity=Math.max(0,Math.min(.9,(1-gd/8)*(GHOST.mode==='hunt'||GHOST.mode==='chase'||GHOST.mode==='seek'?1:.3)+(GHOST.mode==='hunt'?.15*Math.sin(performance.now()*.012):0))).toFixed(2);}else dv.style.opacity=0;
   if(areaStoryEvent()){checkNear();return;}
@@ -1104,7 +1226,7 @@ function update(dt){
       const dx=target.x-GHOST.x,dy=target.y-GHOST.y,d=Math.hypot(dx,dy);
       const gs=2.35*dt;
       if(d>.001)tryGhost(GHOST.x+dx/d*gs,GHOST.y+dy/d*gs);
-      if(d<0.55){if(target.remote&&window.MULTI)MULTI.catchRemote();else jumpscare(()=>endGame('caught'));GHOST.on=false;GHOST.mode='none';GHOST.cool=12;shareWorld('caught');}
+      if(d<0.55){catchPlayer(target,true);}
       if(Math.random()<dt*2)sfxGhostStep(GHOST.x,GHOST.y);
     }
     else if(GHOST.mode==='block'){
@@ -1112,13 +1234,24 @@ function update(dt){
       const dx=target.x-GHOST.x,dy=target.y-GHOST.y,d=Math.hypot(dx,dy);
       const gs=1.25*dt;
       if(d>.001)tryGhost(GHOST.x+dx/d*gs,GHOST.y+dy/d*gs);
-      if(d<0.55){if(target.remote&&window.MULTI)MULTI.catchRemote();else jumpscare(()=>endGame('caught'));GHOST.on=false;GHOST.mode='none';GHOST.cool=12;shareWorld('caught');}
+      if(d<0.55){catchPlayer(target,true);}
       if(Math.random()<dt*1.6)sfxGhostStep(GHOST.x,GHOST.y);
     }
   }
   }
   checkNear();
 }
+function catchPlayer(target,scripted){
+  if(target.remote&&window.MULTI){
+    const r=MULTI.catchRemote();
+    if(r==='down'){
+      if(scripted){GHOST.cool=5;}
+      else{GHOST.mode='patrol';GHOST.cool=18;GHOST.path=null;GHOST.lost=0;}
+      shareWorld('grab');
+    }else{GHOST.on=false;GHOST.mode='none';GHOST.cool=12;shareWorld('caught');}
+    return;}
+  if(window.MULTI&&MULTI.mateAlive&&MULTI.mateAlive()){enterDown();return;}
+  jumpscare(()=>endGame('caught'));GHOST.on=false;GHOST.mode='none';GHOST.cool=12;shareWorld('caught');}
 function tryGhost(nx,ny){if(!wallAt(nx,GHOST.y))GHOST.x=nx;if(!wallAt(GHOST.x,ny))GHOST.y=ny;}
 
 /* ============ 渲染：WebGL 真3D + Canvas 2D 兼容模式 ============ */
@@ -1977,11 +2110,11 @@ function render3D(t){
   const moving=playerMoving&&!HIDE.on;
   if(moving)bobT+=dt*(STAM.running?11.5:7.5);
   const bobA=moving?(STAM.running?.02:.011):0;
-  const baseY=HIDE.on?(HIDE.kind==='desk'?0.19:0.52):0.58;
+  const baseY=HIDE.on?(HIDE.kind==='desk'?0.19:0.52):(DOWN.on?0.26:0.58);
   const fear=S.fear/100;
   camera.position.set(P.x+Math.cos(P.a+Math.PI/2)*Math.sin(bobT*.5)*bobA*.6,baseY+Math.sin(bobT)*bobA+Math.sin(t*.0011)*.004,P.y+Math.sin(P.a+Math.PI/2)*Math.sin(bobT*.5)*bobA*.6);
   camRoll+=((Math.sin(bobT*.5)*bobA*.5+(Math.random()-.5)*.006*fear)-camRoll)*Math.min(1,dt*8);
-  camera.rotation.set(Math.sin(t*.0009)*.004+(Math.random()-.5)*.004*fear,-P.a-Math.PI/2,camRoll);
+  camera.rotation.set(Math.sin(t*.0009)*.004+(Math.random()-.5)*.004*fear,-P.a-Math.PI/2,camRoll+(DOWN.on?.16:0));
   const fovTarget=72+(STAM.running&&moving?7:0)+fear*4;
   if(Math.abs(camera.fov-fovTarget)>.05){camera.fov+=(fovTarget-camera.fov)*Math.min(1,dt*5);camera.updateProjectionMatrix();}
   /* 手电：带一点滞后的独立灯架 */
@@ -2409,6 +2542,7 @@ function beginGame(online=false,resume=null){
   ac();playMusic('explore',700);startDrone();sfxClick();
   if(BGM&&BGM.master)BGM.master.gain.value=MUSIC.custom ? .5 : .65;
   document.body.classList.add('playing');
+  DOWN.on=false;REVIVE.on=false;
   if(resume){applyCheckpoint(resume);}else{try{localStorage.removeItem(CK_KEY);}catch(err){}}
   syncLightBtn();$('endTitle').classList.remove('on');
   const de=document.documentElement;
@@ -2428,7 +2562,7 @@ function beginGame(online=false,resume=null){
 $('startBtn').onclick=()=>{if(window.MULTI&&MULTI.hasSession()){MULTI.showPanel(true);return;}beginGame(false);};
 (function(){const c=loadCheckpoint();const b=$('continueBtn');if(c&&b){b.style.display='inline-block';b.onclick=()=>{if(window.MULTI&&MULTI.hasSession()){MULTI.showPanel(true);return;}beginGame(false,loadCheckpoint());};}})();
 $('resumeBtn').onclick=()=>{const c=loadCheckpoint();if(!c){location.reload();return;}S.mode='title';beginGame(false,c);};
-if(window.MULTI)MULTI.init({S,P,GHOST,HIDE,MW,MH,beginGame,refreshSharedUi,jumpscare,endGame});
+if(window.MULTI)MULTI.init({S,P,GHOST,HIDE,LIGHT,STAM,DOWN,MW,MH,beginGame,refreshSharedUi,jumpscare,endGame,enterDown,exitDown,attractGhost,playCallout:sfxShout});
 </script>
 <script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");</script>
 </body>
