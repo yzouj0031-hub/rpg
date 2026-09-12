@@ -3,6 +3,20 @@
 
   const ROOM_PREFIX = 'di13jie-room-';
   const PROTOCOL_VERSION = 1;
+  /* 国内可达的 STUN + 免费公共 TURN（谷歌 STUN 在国内不可用会导致跨网络 P2P 全挂） */
+  const DEFAULT_ICE = [
+    { urls: ['stun:stun.miwifi.com:3478', 'stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] },
+    {
+      urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turn:openrelay.metered.ca:443?transport=tcp'],
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    }
+  ];
+  function peerOptions() {
+    const base = { debug: 1, config: { iceServers: DEFAULT_ICE, sdpSemantics: 'unified-plan' } };
+    const override = window.D13_PEER_CONFIG;
+    return override && typeof override === 'object' ? Object.assign(base, override) : base;
+  }
   const ROOM_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
   const NET = {
     ctx: null,
@@ -18,6 +32,9 @@
     pendingWorld: null,
     sendTimer: 0,
     worldTimer: 0,
+    signalOpen: false,
+    openTimer: 0,
+    connTimer: 0,
     remote: {
       name: '队友', x: 2.5, y: 2.5, a: 0,
       tx: 2.5, ty: 2.5, ta: 0,
@@ -288,6 +305,7 @@
     }
     NET.conn = connection;
     connection.on('open', () => {
+      clearTimeout(NET.connTimer);
       NET.active = true;
       if (NET.host) {
         setStatus('同学正在进入房间…', 'busy');
@@ -341,10 +359,17 @@
     setBadge(`房间 ${NET.room}`, 'busy');
     setOnlineStart('等 待 同 学 加 入', false);
 
-    const peer = new window.Peer(ROOM_PREFIX + NET.room.toLowerCase(), { debug: 1 });
+    const peer = new window.Peer(ROOM_PREFIX + NET.room.toLowerCase(), peerOptions());
     NET.peer = peer;
     wirePeer(peer);
+    NET.signalOpen = false;
+    clearTimeout(NET.openTimer);
+    NET.openTimer = setTimeout(() => {
+      if (NET.peer === peer && NET.active && !NET.signalOpen) connectionLost('连不上联机服务器：当前网络可能屏蔽了它。换个网络（比如手机热点）再试');
+    }, 12000);
     peer.on('open', () => {
+      NET.signalOpen = true;
+      clearTimeout(NET.openTimer);
       setStatus('房间已创建，把房间码发给同学', 'ok');
       setBadge(`房间 ${NET.room} · 等待队友`, 'busy');
     });
@@ -356,10 +381,11 @@
       return;
     }
     const input = el('joinCode');
-    const room = safeText(input && input.value).toUpperCase().replace(/[^2-9A-HJ-NP-Z]/g, '').slice(0, 6);
+    const raw = safeText(input && input.value).toUpperCase();
+    const room = raw.replace(/[^2-9A-HJ-NP-Z]/g, '').slice(0, 6);
     if (input) input.value = room;
     if (room.length !== 6) {
-      setStatus('请输入 6 位房间码', 'error');
+      setStatus(/[01IO]/.test(raw) ? '房间码里没有 0 / 1 / I / O，请再核对一遍' : '请输入 6 位房间码', 'error');
       return;
     }
 
@@ -373,12 +399,23 @@
     setBadge(`正在加入 ${room}`, 'busy');
     setOnlineStart('连 接 中…', false);
 
-    const peer = new window.Peer(undefined, { debug: 1 });
+    const peer = new window.Peer(undefined, peerOptions());
     NET.peer = peer;
     wirePeer(peer);
+    NET.signalOpen = false;
+    clearTimeout(NET.openTimer);
+    NET.openTimer = setTimeout(() => {
+      if (NET.peer === peer && NET.active && !NET.signalOpen) connectionLost('连不上联机服务器：当前网络可能屏蔽了它。换个网络（比如手机热点）再试');
+    }, 12000);
     peer.on('open', () => {
+      NET.signalOpen = true;
+      clearTimeout(NET.openTimer);
       const connection = peer.connect(ROOM_PREFIX + room.toLowerCase(), { reliable: true });
       wireConnection(connection);
+      clearTimeout(NET.connTimer);
+      NET.connTimer = setTimeout(() => {
+        if (NET.conn === connection && NET.active && !connection.open) connectionLost('找到了房间，但两台设备之间打不通：P2P 被网络拦住了。两台设备连同一个 Wi-Fi 或开热点，成功率最高');
+      }, 16000);
     });
   }
 
@@ -397,6 +434,8 @@
   }
 
   function connectionLost(message) {
+    clearTimeout(NET.openTimer);
+    clearTimeout(NET.connTimer);
     const wasPlaying = NET.ctx && NET.ctx.S.mode === 'play';
     const connection = NET.conn;
     const peer = NET.peer;
@@ -420,6 +459,8 @@
   }
 
   function disconnect(showMessage = true) {
+    clearTimeout(NET.openTimer);
+    clearTimeout(NET.connTimer);
     const connection = NET.conn;
     const peer = NET.peer;
     NET.conn = null;
